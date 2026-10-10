@@ -8,7 +8,6 @@ import {
   getPopularTV,
   getTopRatedTV,
 } from '@/lib/tmdb';
-import { isConfigured } from '@/lib/tmdb';
 import { Hero } from '@/components/Hero';
 import { MovieRow } from '@/components/MovieRow';
 import { Spinner, ErrorState } from '@/components/Spinner';
@@ -48,27 +47,32 @@ export function HomePage({ inWatchlist, onToggleWatchlist }: HomePageProps) {
   const loadData = async () => {
     setLoading(true);
     setError(false);
-    try {
-      const [trend, popM, topM, upM, popTV, topTV] = await Promise.all([
-        getTrending('all', 'week'),
-        getPopularMovies(),
-        getTopRatedMovies(),
-        getUpcomingMovies(),
-        getPopularTV(),
-        getTopRatedTV(),
-      ]);
-      setTrending(trend);
-      setPopularMovies(popM.results);
-      setTopRated(topM.results);
-      setUpcoming(upM.results);
-      setPopularTV(popTV.results);
-      setTopRatedTV(topTV.results);
-    } catch (err) {
-      console.error(err);
+
+    const results = await Promise.allSettled([
+      getTrending('all', 'week'),
+      getPopularMovies(),
+      getTopRatedMovies(),
+      getUpcomingMovies(),
+      getPopularTV(),
+      getTopRatedTV(),
+    ]);
+
+    const [trend, popM, topM, upM, popTV, topTV] = results;
+    const fulfilledCount = results.filter((result) => result.status === 'fulfilled').length;
+
+    if (fulfilledCount === 0) {
+      console.error(results.map((result) => result.status === 'rejected' ? result.reason : null));
       setError(true);
-    } finally {
-      setLoading(false);
+    } else {
+      setTrending(trend.status === 'fulfilled' ? trend.value : []);
+      setPopularMovies(popM.status === 'fulfilled' ? popM.value.results : []);
+      setTopRated(topM.status === 'fulfilled' ? topM.value.results : []);
+      setUpcoming(upM.status === 'fulfilled' ? upM.value.results : []);
+      setPopularTV(popTV.status === 'fulfilled' ? popTV.value.results : []);
+      setTopRatedTV(topTV.status === 'fulfilled' ? topTV.value.results : []);
     }
+
+    setLoading(false);
   };
 
   useEffect(() => {
