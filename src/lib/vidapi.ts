@@ -6,10 +6,12 @@ export function movieEmbedUrl(
   id: number,
   imdbId?: string | null
 ): string {
+  // Prefer IMDB ID when available (more reliable for movie matching),
+  // fall back to TMDB numeric ID.
   if (imdbId) {
-    return `${EMBED_BASE}/movie/${imdbId}?autoplay=1`;
+    return `${EMBED_BASE}/movie/${imdbId}?autoplay=1&quality=highest`;
   }
-  return `${EMBED_BASE}/movie/${id}?autoplay=1`;
+  return `${EMBED_BASE}/movie/${id}?autoplay=1&quality=highest`;
 }
 
 export function tvEmbedUrl(
@@ -19,7 +21,7 @@ export function tvEmbedUrl(
   imdbId?: string | null
 ): string {
   const sourceId = imdbId ?? String(id);
-  return `${EMBED_BASE}/tv/${sourceId}/${season}/${episode}?autoplay=1`;
+  return `${EMBED_BASE}/tv/${sourceId}/${season}/${episode}?autoplay=1&quality=highest`;
 }
 
 export function embedUrl(
@@ -32,5 +34,5 @@ export function embedUrl(
   if (mediaType === 'movie') {
     return movieEmbedUrl(id, imdbId);
   }
-  return tvEmbedUrl(id, season ?? 1, episode ?? 1, imdbId);
+  return tvEmbedUrl(mediaType === 'tv' ? id : id, season ?? 1, episode ?? 1, imdbId);
 }
