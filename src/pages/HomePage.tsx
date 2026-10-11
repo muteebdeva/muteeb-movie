@@ -48,28 +48,38 @@ export function HomePage({ inWatchlist, onToggleWatchlist }: HomePageProps) {
     setLoading(true);
     setError(false);
 
-    const results = await Promise.allSettled([
+    const criticalRequest = Promise.allSettled([
       getTrending('all', 'week'),
       getPopularMovies(),
+      getPopularTV(),
+    ]);
+    const secondaryRequest = Promise.allSettled([
       getTopRatedMovies(),
       getUpcomingMovies(),
-      getPopularTV(),
       getTopRatedTV(),
     ]);
 
-    const [trend, popM, topM, upM, popTV, topTV] = results;
-    const fulfilledCount = results.filter((result) => result.status === 'fulfilled').length;
+    const criticalResults = await criticalRequest;
+    const [trend, popM, popTV] = criticalResults;
+    const criticalSuccesses = criticalResults.filter((result) => result.status === 'fulfilled').length;
 
-    if (fulfilledCount === 0) {
-      console.error(results.map((result) => result.status === 'rejected' ? result.reason : null));
+    setTrending(trend.status === 'fulfilled' ? trend.value : []);
+    setPopularMovies(popM.status === 'fulfilled' ? popM.value.results : []);
+    setPopularTV(popTV.status === 'fulfilled' ? popTV.value.results : []);
+
+    if (criticalSuccesses > 0) setLoading(false);
+
+    const secondaryResults = await secondaryRequest;
+    const [topM, upM, topTV] = secondaryResults;
+    const secondarySuccesses = secondaryResults.filter((result) => result.status === 'fulfilled').length;
+
+    setTopRated(topM.status === 'fulfilled' ? topM.value.results : []);
+    setUpcoming(upM.status === 'fulfilled' ? upM.value.results : []);
+    setTopRatedTV(topTV.status === 'fulfilled' ? topTV.value.results : []);
+
+    if (criticalSuccesses === 0 && secondarySuccesses === 0) {
+      console.error([...criticalResults, ...secondaryResults].map((result) => result.status === 'rejected' ? result.reason : null));
       setError(true);
-    } else {
-      setTrending(trend.status === 'fulfilled' ? trend.value : []);
-      setPopularMovies(popM.status === 'fulfilled' ? popM.value.results : []);
-      setTopRated(topM.status === 'fulfilled' ? topM.value.results : []);
-      setUpcoming(upM.status === 'fulfilled' ? upM.value.results : []);
-      setPopularTV(popTV.status === 'fulfilled' ? popTV.value.results : []);
-      setTopRatedTV(topTV.status === 'fulfilled' ? topTV.value.results : []);
     }
 
     setLoading(false);

@@ -33,6 +33,7 @@ export function MovieRow({ title, movies, inWatchlist, onToggleWatchlist }: Movi
       <div className="relative">
         <button
           onClick={() => scroll('left')}
+          aria-label={`Scroll ${title} left`}
           className="hidden md:flex absolute left-0 top-0 bottom-0 z-10 w-12 items-center justify-center bg-gradient-to-r from-black/80 to-transparent opacity-0 group-hover/row:opacity-100 transition-opacity"
         >
           <ChevronLeft className="w-6 h-6 text-white" />
@@ -55,6 +56,7 @@ export function MovieRow({ title, movies, inWatchlist, onToggleWatchlist }: Movi
 
         <button
           onClick={() => scroll('right')}
+          aria-label={`Scroll ${title} right`}
           className="hidden md:flex absolute right-0 top-0 bottom-0 z-10 w-12 items-center justify-center bg-gradient-to-l from-black/80 to-transparent opacity-0 group-hover/row:opacity-100 transition-opacity"
         >
           <ChevronRight className="w-6 h-6 text-white" />

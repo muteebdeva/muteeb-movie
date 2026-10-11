@@ -30,6 +30,9 @@ export function Hero({ movie, inWatchlist, onToggleWatchlist }: HeroProps) {
         <img
           src={backdrop}
           alt={title}
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
             loaded ? 'opacity-100' : 'opacity-0'
           }`}
