@@ -1,4 +1,4 @@
-import { Film, Github, ExternalLink } from 'lucide-react';
+import { Github, ExternalLink } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -6,7 +6,7 @@ export function Footer() {
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Film className="w-5 h-5 text-red-500" />
+            <img src="/logo.png" alt="Muteeb Movie" className="w-6 h-6 rounded object-contain" />
             <span className="text-lg font-bold text-white">
               Muteeb<span className="text-red-500"> Movie</span>
             </span>

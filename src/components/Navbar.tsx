@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Bookmark, Film, Menu, X } from 'lucide-react';
+import { Search, Bookmark, Menu, X } from 'lucide-react';
 import { navigate } from '@/lib/router';
 
 interface NavbarProps {
@@ -47,7 +47,7 @@ export function Navbar({ onSearch, initialQuery = '' }: NavbarProps) {
             onClick={() => navigate('/')}
             className="flex items-center gap-2 group"
           >
-            <Film className="w-7 h-7 text-red-500 group-hover:text-red-400 transition-colors" />
+            <img src="/logo.png" alt="Muteeb Movie" className="w-8 h-8 rounded object-contain transition-transform group-hover:scale-105" />
             <span className="text-xl font-bold tracking-tight text-white">
               Muteeb<span className="text-red-500"> Movie</span>
             </span>
