@@ -6,23 +6,61 @@ const IMG_BASE = 'https://image.tmdb.org/t/p';
 const API_KEY =
   (import.meta.env.VITE_TMDB_API_KEY as string | undefined) ||
   'bd16028b4c61160adf9485bf805087ce';
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
+const inFlightRequests = new Map<string, Promise<unknown>>();
+
+async function requestTmdb<T>(url: string): Promise<T> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = globalThis.setTimeout(() => controller.abort(), 12000);
+
+    try {
+      const res = await fetch(url, {
+        signal: controller.signal,
+        cache: 'force-cache',
+      });
+      if (res.ok) return (await res.json()) as T;
+
+      lastError = new Error(`TMDB API error: ${res.status} ${res.statusText}`);
+      if (![429, 500, 502, 503, 504].includes(res.status)) throw lastError;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('TMDB request failed');
+      if (attempt === 1) throw lastError;
+    } finally {
+      globalThis.clearTimeout(timeoutId);
+    }
+
+    await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 500));
+  }
+
+  throw lastError || new Error('TMDB request failed');
+}
 
 async function tmdbFetch<T>(path: string, extraParams?: URLSearchParams): Promise<T> {
   const params = extraParams ?? new URLSearchParams();
   if (API_KEY) params.set('api_key', API_KEY);
 
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+  const url = `${API_BASE}${path}?${params.toString()}`;
+  const cached = responseCache.get(url);
+  if (cached && cached.expiresAt > Date.now()) return cached.data as T;
+  if (cached) responseCache.delete(url);
+
+  const existingRequest = inFlightRequests.get(url);
+  if (existingRequest) return existingRequest as Promise<T>;
+
+  const request = requestTmdb<T>(url).then((data) => {
+    responseCache.set(url, { expiresAt: Date.now() + CACHE_TTL_MS, data });
+    return data;
+  });
+  inFlightRequests.set(url, request);
 
   try {
-    const url = `${API_BASE}${path}?${params.toString()}`;
-    const res = await fetch(url, { signal: controller.signal });
-    if (!res.ok) {
-      throw new Error(`TMDB API error: ${res.status} ${res.statusText}`);
-    }
-    return (await res.json()) as T;
+    return await request;
   } finally {
-    window.clearTimeout(timeoutId);
+    inFlightRequests.delete(url);
   }
 }
 
