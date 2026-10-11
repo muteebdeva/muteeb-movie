@@ -34,5 +34,5 @@ export function embedUrl(
   if (mediaType === 'movie') {
     return movieEmbedUrl(id, imdbId);
   }
-  return tvEmbedUrl(mediaType === 'tv' ? id : id, season ?? 1, episode ?? 1, imdbId);
+  return tvEmbedUrl(id, season ?? 1, episode ?? 1, imdbId);
 }
