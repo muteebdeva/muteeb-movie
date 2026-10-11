@@ -3,7 +3,9 @@ import type { Genre, MediaDetails, MediaType, Movie, SearchResult } from '@/type
 const API_BASE = 'https://api.themoviedb.org/3';
 const IMG_BASE = 'https://image.tmdb.org/t/p';
 
-const API_KEY = import.meta.env.VITE_TMDB_API_KEY as string | undefined;
+const API_KEY =
+  (import.meta.env.VITE_TMDB_API_KEY as string | undefined) ||
+  'bd16028b4c61160adf9485bf805087ce';
 
 async function tmdbFetch<T>(path: string, extraParams?: URLSearchParams): Promise<T> {
   const params = extraParams ?? new URLSearchParams();
