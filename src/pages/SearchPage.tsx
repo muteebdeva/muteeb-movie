@@ -8,14 +8,12 @@ import { getMediaType } from '@/lib/utils';
 
 interface SearchPageProps {
   query: string;
-  onQueryChange: (q: string) => void;
   inWatchlist: (id: number) => boolean;
   onToggleWatchlist: (item: Omit<WatchlistItem, 'added_at'>, movie: Movie) => void;
 }
 
 export function SearchPage({
   query,
-  onQueryChange,
   inWatchlist,
   onToggleWatchlist,
 }: SearchPageProps) {

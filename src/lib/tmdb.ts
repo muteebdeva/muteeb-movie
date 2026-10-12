@@ -15,7 +15,7 @@ async function requestTmdb<T>(url: string): Promise<T> {
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const controller = new AbortController();
-    const timeoutId = globalThis.setTimeout(() => controller.abort(), 12000);
+    const timeoutId = globalThis.setTimeout(() => controller.abort(), 7000);
 
     try {
       const res = await fetch(url, {
@@ -24,7 +24,10 @@ async function requestTmdb<T>(url: string): Promise<T> {
       });
       if (res.ok) return (await res.json()) as T;
 
-      lastError = new Error(`TMDB API error: ${res.status} ${res.statusText}`);
+      if (res.status === 401) {
+        throw new Error('TMDB API key is invalid or expired');
+      }
+      lastError = new Error(`TMDB API error: ${res.status}`);
       if (![429, 500, 502, 503, 504].includes(res.status)) throw lastError;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('TMDB request failed');
@@ -33,7 +36,7 @@ async function requestTmdb<T>(url: string): Promise<T> {
       globalThis.clearTimeout(timeoutId);
     }
 
-    await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 500));
+    await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 300));
   }
 
   throw lastError || new Error('TMDB request failed');

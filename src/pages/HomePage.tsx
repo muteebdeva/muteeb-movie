@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { Movie } from '@/types';
 import {
   getTrending,
@@ -27,6 +27,7 @@ export function HomePage({ inWatchlist, onToggleWatchlist }: HomePageProps) {
   const [upcoming, setUpcoming] = useState<Movie[]>([]);
   const [popularTV, setPopularTV] = useState<Movie[]>([]);
   const [topRatedTV, setTopRatedTV] = useState<Movie[]>([]);
+  const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleToggle = (movie: Movie) => {
     onToggleWatchlist(
@@ -48,37 +49,51 @@ export function HomePage({ inWatchlist, onToggleWatchlist }: HomePageProps) {
     setLoading(true);
     setError(false);
 
-    const criticalRequest = Promise.allSettled([
-      getTrending('all', 'week'),
-      getPopularMovies(),
-      getPopularTV(),
-    ]);
-    const secondaryRequest = Promise.allSettled([
-      getTopRatedMovies(),
-      getUpcomingMovies(),
-      getTopRatedTV(),
-    ]);
+    safetyTimerRef.current = setTimeout(() => {
+      setLoading(false);
+    }, 8000);
 
-    const criticalResults = await criticalRequest;
-    const [trend, popM, popTV] = criticalResults;
-    const criticalSuccesses = criticalResults.filter((result) => result.status === 'fulfilled').length;
+    let anySuccess = false;
 
-    setTrending(trend.status === 'fulfilled' ? trend.value : []);
-    setPopularMovies(popM.status === 'fulfilled' ? popM.value.results : []);
-    setPopularTV(popTV.status === 'fulfilled' ? popTV.value.results : []);
+    const safeSet = <T,>(setter: (v: T) => void, value: T) => {
+      setter(value);
+      anySuccess = true;
+      if (safetyTimerRef.current) {
+        clearTimeout(safetyTimerRef.current);
+        safetyTimerRef.current = null;
+      }
+      setLoading(false);
+    };
 
-    if (criticalSuccesses > 0) setLoading(false);
+    const tasks: Promise<void>[] = [
+      getTrending('all', 'week')
+        .then((v) => safeSet(setTrending, v))
+        .catch(() => {}),
+      getPopularMovies()
+        .then((v) => safeSet(setPopularMovies, v.results))
+        .catch(() => {}),
+      getPopularTV()
+        .then((v) => safeSet(setPopularTV, v.results))
+        .catch(() => {}),
+      getTopRatedMovies()
+        .then((v) => safeSet(setTopRated, v.results))
+        .catch(() => {}),
+      getUpcomingMovies()
+        .then((v) => safeSet(setUpcoming, v.results))
+        .catch(() => {}),
+      getTopRatedTV()
+        .then((v) => safeSet(setTopRatedTV, v.results))
+        .catch(() => {}),
+    ];
 
-    const secondaryResults = await secondaryRequest;
-    const [topM, upM, topTV] = secondaryResults;
-    const secondarySuccesses = secondaryResults.filter((result) => result.status === 'fulfilled').length;
+    await Promise.allSettled(tasks);
 
-    setTopRated(topM.status === 'fulfilled' ? topM.value.results : []);
-    setUpcoming(upM.status === 'fulfilled' ? upM.value.results : []);
-    setTopRatedTV(topTV.status === 'fulfilled' ? topTV.value.results : []);
+    if (safetyTimerRef.current) {
+      clearTimeout(safetyTimerRef.current);
+      safetyTimerRef.current = null;
+    }
 
-    if (criticalSuccesses === 0 && secondarySuccesses === 0) {
-      console.error([...criticalResults, ...secondaryResults].map((result) => result.status === 'rejected' ? result.reason : null));
+    if (!anySuccess) {
       setError(true);
     }
 
@@ -87,16 +102,23 @@ export function HomePage({ inWatchlist, onToggleWatchlist }: HomePageProps) {
 
   useEffect(() => {
     loadData();
+    return () => {
+      if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
+    };
   }, []);
 
-  if (loading) return <Spinner message="Loading movies & TV shows..." />;
-  if (error)
+  if (loading && trending.length === 0 && popularMovies.length === 0 && popularTV.length === 0) {
+    return <Spinner message="Loading movies & TV shows..." />;
+  }
+
+  if (error && trending.length === 0 && popularMovies.length === 0 && popularTV.length === 0) {
     return (
       <ErrorState
-        message="Failed to load content. Please check your TMDB API key."
+        message="Unable to load content right now. The movie database may be busy — please try again in a moment."
         onRetry={loadData}
       />
     );
+  }
 
   const heroMovie = trending[0] || popularMovies[0];
 

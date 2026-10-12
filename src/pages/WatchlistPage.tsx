@@ -5,14 +5,12 @@ import { navigate } from '@/lib/router';
 
 interface WatchlistPageProps {
   watchlist: WatchlistItem[];
-  inWatchlist: (id: number) => boolean;
   onToggleWatchlist: (item: Omit<WatchlistItem, 'added_at'>, movie: Movie) => void;
   onRemove: (id: number) => void;
 }
 
 export function WatchlistPage({
   watchlist,
-  inWatchlist,
   onToggleWatchlist,
   onRemove,
 }: WatchlistPageProps) {

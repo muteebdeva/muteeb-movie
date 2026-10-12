@@ -15,15 +15,6 @@ export function useWatchlist() {
     }
   }, []);
 
-  const persist = (items: WatchlistItem[]) => {
-    setWatchlist(items);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    } catch {
-      // ignore
-    }
-  };
-
   const isInWatchlist = useCallback(
     (id: number) => watchlist.some((item) => item.id === id),
     [watchlist]

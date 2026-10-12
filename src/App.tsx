@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { Movie, WatchlistItem } from '@/types';
+import type { WatchlistItem } from '@/types';
 import { useHashRoute, matchRoute, navigate } from '@/lib/router';
 import { useWatchlist } from '@/lib/useWatchlist';
 import { isConfigured } from '@/lib/tmdb';
@@ -21,7 +21,7 @@ function App() {
   };
 
   const handleToggleWatchlist = useCallback(
-    (item: Omit<WatchlistItem, 'added_at'>, movie: Movie) => {
+    (item: Omit<WatchlistItem, 'added_at'>) => {
       toggleWatchlist(item);
     },
     [toggleWatchlist]
@@ -68,7 +68,6 @@ function App() {
         {matched.page === 'search' && (
           <SearchPage
             query={matched.query || ''}
-            onQueryChange={handleSearch}
             inWatchlist={isInWatchlist}
             onToggleWatchlist={handleToggleWatchlist}
           />
@@ -77,7 +76,6 @@ function App() {
         {matched.page === 'watchlist' && (
           <WatchlistPage
             watchlist={watchlist}
-            inWatchlist={isInWatchlist}
             onToggleWatchlist={handleToggleWatchlist}
             onRemove={removeFromWatchlist}
           />

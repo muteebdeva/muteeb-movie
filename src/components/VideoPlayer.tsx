@@ -4,12 +4,11 @@ import { Loader2, AlertCircle, Maximize, RotateCcw, ExternalLink } from 'lucide-
 interface VideoPlayerProps {
   src: string;
   title: string;
-  onError?: () => void;
 }
 
 const SPINNER_TIMEOUT_MS = 8000;
 
-export function VideoPlayer({ src, title, onError }: VideoPlayerProps) {
+export function VideoPlayer({ src, title }: VideoPlayerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
@@ -32,9 +31,6 @@ export function VideoPlayer({ src, title, onError }: VideoPlayerProps) {
     setLoading(true);
     setError(false);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    // Hide spinner after timeout — the iframe may still be loading behind it.
-    // Cross-origin iframes don't always fire onLoad reliably, so we don't
-    // treat a timeout as an error; we just stop blocking the view.
     timeoutRef.current = setTimeout(() => {
       if (!loadedRef.current) {
         setLoading(false);
