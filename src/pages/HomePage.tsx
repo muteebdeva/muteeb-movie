@@ -204,9 +204,13 @@ export function HomePage({
         />
       )}
 
-      <div className="relative z-10 -mt-16 md:-mt-24 space-y-1 pb-12">
-        {/* Genre quick-browse + Surprise Me */}
-        <div className="px-4 sm:px-6 lg:px-10 mb-6 flex flex-wrap items-center gap-3">
+      {/* Genre quick-browse + Surprise Me — its own row in normal flow below
+          the hero, so it can never overlap the hero's action buttons. The
+          chips live on a w-max track inside an overflow-x-auto scroller:
+          one swipeable line, vertically centered with the button, and the
+          scroller clips internally so the page itself never scrolls sideways. */}
+      <div className="px-4 sm:px-6 lg:px-10 pt-4 pb-3">
+        <div className="flex items-center gap-3">
           <button
             onClick={surpriseMe}
             className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-semibold transition-colors shrink-0"
@@ -216,27 +220,31 @@ export function HomePage({
             Surprise Me
           </button>
           {genres.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 flex-1 min-w-0">
-              {genres.slice(0, 12).map((g) => (
+            <div className="min-w-0 flex-1 overflow-x-auto scrollbar-hide">
+              <div className="flex w-max items-center gap-2 py-1">
+                {genres.slice(0, 12).map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => navigate(`/browse?genre=${g.id}&type=movie`)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 rounded-full text-sm font-medium whitespace-nowrap transition-colors border border-zinc-700/60"
+                  >
+                    <Shuffle className="w-3.5 h-3.5 text-zinc-500" />
+                    {g.name}
+                  </button>
+                ))}
                 <button
-                  key={g.id}
-                  onClick={() => navigate(`/browse?genre=${g.id}&type=movie`)}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 rounded-full text-sm font-medium whitespace-nowrap transition-colors border border-zinc-700/60"
+                  onClick={() => navigate('/browse')}
+                  className="px-4 py-2 text-red-400 hover:text-red-300 text-sm font-medium whitespace-nowrap transition-colors"
                 >
-                  <Shuffle className="w-3.5 h-3.5 text-zinc-500" />
-                  {g.name}
+                  All genres →
                 </button>
-              ))}
-              <button
-                onClick={() => navigate('/browse')}
-                className="px-4 py-2 text-red-400 hover:text-red-300 text-sm font-medium whitespace-nowrap transition-colors"
-              >
-                All genres →
-              </button>
+              </div>
             </div>
           )}
         </div>
+      </div>
 
+      <div className="relative z-10 space-y-1 pb-12">
         {historyMovies.length > 0 && (
           <MovieRow
             title="Continue Watching"
