@@ -17,11 +17,6 @@ export function VideoPlayer({ src, title, onPlayerEvent }: VideoPlayerProps) {
   const [retryKey, setRetryKey] = useState(0);
   const [quality, setQuality] = useState<PlayerQuality | null>(null);
   const [availableQualities, setAvailableQualities] = useState<string[]>([]);
-  // Click shield: the provider fires ad popups/redirects from inside its
-  // player on user gestures. The first gesture lands on this transparent
-  // layer instead of the iframe, so the popup trigger is swallowed; the
-  // layer then removes itself and later gestures reach the player normally.
-  const [shieldArmed, setShieldArmed] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedRef = useRef(false);
@@ -44,7 +39,6 @@ export function VideoPlayer({ src, title, onPlayerEvent }: VideoPlayerProps) {
     setError(false);
     setQuality(null);
     setAvailableQualities([]);
-    setShieldArmed(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
       if (!loadedRef.current) {
@@ -152,15 +146,7 @@ export function VideoPlayer({ src, title, onPlayerEvent }: VideoPlayerProps) {
       />
       {/* NOTE: no `sandbox` attribute here on purpose. Sandboxing would block
           the provider's ad popups/redirects, but the provider detects it and
-          refuses to load the player at all ("Playback blocked"). The click
-          shield below is the mitigation that keeps playback working. */}
-      {shieldArmed && (
-        <button
-          className="absolute inset-0 z-30 bg-transparent cursor-pointer"
-          aria-label="Activate video player"
-          onPointerDown={() => setShieldArmed(false)}
-        />
-      )}
+          refuses to load the player at all ("Playback blocked"). */}
 
       {/* Genuine quality badge: shows ONLY the rendition the provider itself
           reports via PLAYER_EVENT — never guessed, never hardcoded. */}
