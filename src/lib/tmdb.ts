@@ -3,9 +3,11 @@ import type { Genre, MediaDetails, MediaType, Movie, SearchResult } from '@/type
 const API_BASE = 'https://api.themoviedb.org/3';
 const IMG_BASE = 'https://image.tmdb.org/t/p';
 
-const API_KEY =
-  (import.meta.env.VITE_TMDB_API_KEY as string | undefined) ||
-  'bd16028b4c61160adf9485bf805087ce';
+// The TMDB API key is provided at build time via the VITE_TMDB_API_KEY
+// environment variable (local `.env` file or the hosting dashboard, e.g.
+// Vercel project settings). It is intentionally NOT hardcoded here and must
+// never be committed to the repository.
+const API_KEY = import.meta.env.VITE_TMDB_API_KEY as string | undefined;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
 const inFlightRequests = new Map<string, Promise<unknown>>();

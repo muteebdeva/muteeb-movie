@@ -1,3 +1,9 @@
+# API keys and secrets — never commit these.
+# Provide VITE_TMDB_API_KEY via a local .env (see .env.example) or via the
+# hosting dashboard (e.g. Vercel project settings > Environment Variables).
+.env
+.env*.local
+
 logs
 *.log
 npm-debug.log*
