@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Play, Info, Star, Plus, Check } from 'lucide-react';
 import type { Movie } from '@/types';
 import { backdropUrl } from '@/lib/tmdb';
@@ -17,14 +17,29 @@ export function Hero({ movies, inWatchlist, onToggleWatchlist }: HeroProps) {
   const [index, setIndex] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [failedIds, setFailedIds] = useState<ReadonlySet<number>>(new Set());
+  const pickedRef = useRef(false);
 
-  const items = movies.filter((m) => m.backdrop_path).slice(0, 5);
-  const movie = items[index] ?? movies[0];
+  // Only titles with a working backdrop can be featured; ones whose image
+  // fails to load are dropped so the hero never shows a black hole.
+  const items = useMemo(
+    () => movies.filter((m) => m.backdrop_path && !failedIds.has(m.id)).slice(0, 5),
+    [movies, failedIds]
+  );
   const count = items.length;
+  const safeIndex = count > 0 ? index % count : 0;
+  const movie = items[safeIndex] ?? movies[0];
 
+  // Feature a different title on each visit instead of always opening on #1.
   useEffect(() => {
-    setIndex(0);
-  }, [movies.length]);
+    if (count > 0 && !pickedRef.current) {
+      pickedRef.current = true;
+      setIndex(Math.floor(Math.random() * count));
+    }
+    if (count === 0) {
+      pickedRef.current = false;
+    }
+  }, [count]);
 
   useEffect(() => {
     setLoaded(false);
@@ -66,6 +81,9 @@ export function Hero({ movies, inWatchlist, onToggleWatchlist }: HeroProps) {
             loaded ? 'opacity-100' : 'opacity-0'
           }`}
           onLoad={() => setLoaded(true)}
+          onError={() =>
+            setFailedIds((prev) => new Set(prev).add(movie.id))
+          }
         />
       )}
 
@@ -87,7 +105,7 @@ export function Hero({ movies, inWatchlist, onToggleWatchlist }: HeroProps) {
             {year && <span className="text-sm text-zinc-300">{year}</span>}
             {count > 1 && (
               <span className="text-xs text-zinc-500">
-                {index + 1} / {count}
+                {safeIndex + 1} / {count}
               </span>
             )}
           </div>
@@ -136,7 +154,7 @@ export function Hero({ movies, inWatchlist, onToggleWatchlist }: HeroProps) {
                   key={m.id}
                   onClick={() => setIndex(i)}
                   className={`h-1.5 rounded-full transition-all ${
-                    i === index ? 'w-8 bg-white' : 'w-4 bg-zinc-600 hover:bg-zinc-400'
+                    i === safeIndex ? 'w-8 bg-white' : 'w-4 bg-zinc-600 hover:bg-zinc-400'
                   }`}
                   aria-label={`Show ${getTitle(m)}`}
                 />
