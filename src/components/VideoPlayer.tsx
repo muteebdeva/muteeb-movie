@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Loader2, AlertCircle, Maximize, RotateCcw, ExternalLink } from 'lucide-react';
 import { parsePlayerEvent, type PlayerEventData, type PlayerQuality } from '@/lib/playerEvents';
+import { IFRAME_SANDBOX } from '@/lib/playerSecurity';
 
 interface VideoPlayerProps {
   src: string;
@@ -142,6 +143,9 @@ export function VideoPlayer({ src, title, onPlayerEvent }: VideoPlayerProps) {
         frameBorder="0"
         allowFullScreen
         allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope"
+        // Sandboxed: blocks ad popups and full-page redirects from inside the
+        // third-party player without affecting playback (see playerSecurity.ts).
+        sandbox={IFRAME_SANDBOX}
         onLoad={handleLoad}
       />
 

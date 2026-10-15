@@ -1,6 +1,7 @@
 import { parsePlayerEvent, PLAYER_ORIGIN } from '../src/lib/playerEvents';
 import { withResumeAt, movieEmbedUrl, tvEmbedUrl } from '../src/lib/vidapi';
 import { formatClock } from '../src/lib/utils';
+import { IFRAME_SANDBOX, FORBIDDEN_SANDBOX_TOKENS } from '../src/lib/playerSecurity';
 
 let pass = 0;
 let fail = 0;
@@ -53,6 +54,14 @@ ok('tv resumeAt', withResumeAt(tvBase, 61).includes('resumeAt=61'));
 ok('clock m:ss', formatClock(65) === '1:05');
 ok('clock h:mm:ss', formatClock(3725) === '1:02:05');
 ok('clock zero', formatClock(0) === '0:00');
+
+// --- iframe sandbox (ad-redirect hardening) ---
+const tokens = IFRAME_SANDBOX.split(/\s+/);
+ok('sandbox allows scripts (player needs JS)', tokens.includes('allow-scripts'));
+ok('sandbox keeps real origin (player storage + postMessage checks)', tokens.includes('allow-same-origin'));
+for (const bad of FORBIDDEN_SANDBOX_TOKENS) {
+  ok(`sandbox forbids ${bad}`, !tokens.includes(bad));
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);
