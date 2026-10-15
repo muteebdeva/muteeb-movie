@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import type { WatchlistItem } from '@/types';
 import { useHashRoute, matchRoute, navigate } from '@/lib/router';
 import { useWatchlist } from '@/lib/useWatchlist';
+import { useWatchHistory } from '@/lib/useHistory';
 import { isConfigured } from '@/lib/tmdb';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -15,7 +16,14 @@ import { WatchlistPage } from '@/pages/WatchlistPage';
 function App() {
   const route = useHashRoute();
   const matched = matchRoute(route);
-  const { watchlist, isInWatchlist, toggleWatchlist, removeFromWatchlist } = useWatchlist();
+  const { watchlist, isInWatchlist, toggleWatchlist, removeFromWatchlist, clearWatchlist } =
+    useWatchlist();
+  const {
+    history: watchHistory,
+    recordWatch,
+    removeFromHistory,
+    clearHistory,
+  } = useWatchHistory();
 
   const handleSearch = (query: string) => {
     navigate(`/search?q=${encodeURIComponent(query)}`);
@@ -45,6 +53,8 @@ function App() {
           <HomePage
             inWatchlist={isInWatchlist}
             onToggleWatchlist={handleToggleWatchlist}
+            watchHistory={watchHistory}
+            onRemoveFromHistory={removeFromHistory}
           />
         )}
 
@@ -54,6 +64,7 @@ function App() {
             id={matched.id}
             inWatchlist={isInWatchlist}
             onToggleWatchlist={handleToggleWatchlist}
+            onRecordWatch={recordWatch}
           />
         )}
 
@@ -63,6 +74,7 @@ function App() {
             id={matched.id}
             inWatchlist={isInWatchlist}
             onToggleWatchlist={handleToggleWatchlist}
+            onRecordWatch={recordWatch}
           />
         )}
 
@@ -84,8 +96,13 @@ function App() {
         {matched.page === 'watchlist' && (
           <WatchlistPage
             watchlist={watchlist}
+            inWatchlist={isInWatchlist}
             onToggleWatchlist={handleToggleWatchlist}
             onRemove={removeFromWatchlist}
+            onClearAll={clearWatchlist}
+            watchHistory={watchHistory}
+            onRemoveFromHistory={removeFromHistory}
+            onClearHistory={clearHistory}
           />
         )}
       </main>

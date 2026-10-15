@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { Movie } from '@/types';
 import { MovieCard } from '@/components/MovieCard';
 
@@ -8,9 +8,12 @@ interface MovieRowProps {
   movies: Movie[];
   inWatchlist: (id: number) => boolean;
   onToggleWatchlist: (movie: Movie) => void;
+  /** Optional per-item remove action (e.g. for history rows). */
+  onRemove?: (movie: Movie) => void;
+  removeLabel?: string;
 }
 
-export function MovieRow({ title, movies, inWatchlist, onToggleWatchlist }: MovieRowProps) {
+export function MovieRow({ title, movies, inWatchlist, onToggleWatchlist, onRemove, removeLabel = 'Remove' }: MovieRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -45,12 +48,26 @@ export function MovieRow({ title, movies, inWatchlist, onToggleWatchlist }: Movi
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {movies.map((movie) => (
-            <MovieCard
-              key={`${movie.id}-${movie.media_type ?? ''}`}
-              movie={movie}
-              inWatchlist={inWatchlist(movie.id)}
-              onToggleWatchlist={onToggleWatchlist}
-            />
+            <div key={`${movie.id}-${movie.media_type ?? ''}`} className="relative shrink-0">
+              <MovieCard
+                movie={movie}
+                inWatchlist={inWatchlist(movie.id)}
+                onToggleWatchlist={onToggleWatchlist}
+              />
+              {onRemove && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove(movie);
+                  }}
+                  className="absolute top-2 left-2 w-7 h-7 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center text-zinc-400 hover:text-white hover:bg-black/90 transition-colors"
+                  aria-label={`${removeLabel}: ${movie.title || movie.name}`}
+                  title={removeLabel}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           ))}
         </div>
 

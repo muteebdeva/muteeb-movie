@@ -57,6 +57,46 @@ main > div {
   animation: fadeIn 0.4s ease-out;
 }
 
+/* Skeleton shimmer for loading states */
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #27272a 25%, #3f3f46 50%, #27272a 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  main > div {
+    animation: none;
+  }
+
+  .skeleton-shimmer {
+    animation: none;
+    background: #27272a;
+  }
+}
+
 /* Line clamp utility */
 .line-clamp-3 {
   display: -webkit-box;

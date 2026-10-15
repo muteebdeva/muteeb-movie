@@ -5,7 +5,7 @@ import { discoverMedia, getGenres, type DiscoverFilters } from '@/lib/tmdb';
 import { useHashRoute, navigate } from '@/lib/router';
 import { MovieCard } from '@/components/MovieCard';
 import { Spinner, ErrorState } from '@/components/Spinner';
-import { getTitle, getMediaType, formatYear, getReleaseDate } from '@/lib/utils';
+import { getTitle, getMediaType, getReleaseDate } from '@/lib/utils';
 
 interface BrowsePageProps {
   inWatchlist: (id: number) => boolean;

@@ -1,18 +1,44 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { WatchlistItem } from '@/types';
+import { safeGet, safeSet, safeRemove, isRecord } from '@/lib/storage';
 
-const STORAGE_KEY = 'cineverse_watchlist';
+const STORAGE_KEY = 'muteeb_movie_watchlist_v1';
+
+function isWatchlistItem(v: unknown): v is WatchlistItem {
+  return (
+    isRecord(v) &&
+    typeof v.id === 'number' &&
+    (v.media_type === 'movie' || v.media_type === 'tv') &&
+    typeof v.title === 'string'
+  );
+}
+
+function isWatchlist(v: unknown): v is WatchlistItem[] {
+  return Array.isArray(v) && v.every(isWatchlistItem);
+}
 
 export function useWatchlist() {
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  // Lazily read from storage so a corrupt value can never break first render.
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>(() =>
+    safeGet(STORAGE_KEY, [], isWatchlist)
+  );
 
+  // Migrate the legacy key from the original build once.
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setWatchlist(JSON.parse(raw));
+      const legacy = localStorage.getItem('cineverse_watchlist');
+      if (legacy && watchlist.length === 0) {
+        const parsed: unknown = JSON.parse(legacy);
+        if (isWatchlist(parsed) && parsed.length > 0) {
+          setWatchlist(parsed);
+          safeSet(STORAGE_KEY, parsed);
+        }
+        localStorage.removeItem('cineverse_watchlist');
+      }
     } catch {
       // ignore
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isInWatchlist = useCallback(
@@ -25,11 +51,7 @@ export function useWatchlist() {
       setWatchlist((prev) => {
         if (prev.some((p) => p.id === item.id)) return prev;
         const next = [...prev, { ...item, added_at: Date.now() }];
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        } catch {
-          // ignore
-        }
+        safeSet(STORAGE_KEY, next);
         return next;
       });
     },
@@ -39,13 +61,14 @@ export function useWatchlist() {
   const removeFromWatchlist = useCallback((id: number) => {
     setWatchlist((prev) => {
       const next = prev.filter((item) => item.id !== id);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // ignore
-      }
+      safeSet(STORAGE_KEY, next);
       return next;
     });
+  }, []);
+
+  const clearWatchlist = useCallback(() => {
+    setWatchlist([]);
+    safeRemove(STORAGE_KEY);
   }, []);
 
   const toggleWatchlist = useCallback(
@@ -59,5 +82,5 @@ export function useWatchlist() {
     [isInWatchlist, addToWatchlist, removeFromWatchlist]
   );
 
-  return { watchlist, isInWatchlist, addToWatchlist, removeFromWatchlist, toggleWatchlist };
+  return { watchlist, isInWatchlist, addToWatchlist, removeFromWatchlist, toggleWatchlist, clearWatchlist };
 }

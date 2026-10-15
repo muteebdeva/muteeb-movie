@@ -59,6 +59,10 @@ export function VideoPlayer({ src, title }: VideoPlayerProps) {
     }
   }, []);
 
+  // Iframe load failures are not detectable cross-origin, so the error
+  // panel is also reachable through the "report a problem" action below.
+  const reportProblem = useCallback(() => setError(true), []);
+
   if (error) {
     return (
       <div className="relative w-full aspect-video bg-zinc-900 rounded-xl flex flex-col items-center justify-center gap-4 p-6 text-center">
@@ -66,9 +70,10 @@ export function VideoPlayer({ src, title }: VideoPlayerProps) {
         <div>
           <h3 className="text-lg font-semibold text-white mb-1">Playback Unavailable</h3>
           <p className="text-sm text-zinc-400 max-w-md">
-            We couldn't load the video stream for this title. The source may be
-            temporarily unavailable or this content may not be in the streaming
-            library. Try again later or pick a different title.
+            We couldn't load the video stream for this title. The third-party
+            source may be temporarily down, blocked in your region, or this
+            title may not be in the streaming library. Try again later or pick
+            a different title.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -94,6 +99,7 @@ export function VideoPlayer({ src, title }: VideoPlayerProps) {
   }
 
   return (
+    <div>
     <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden group">
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 z-10 pointer-events-none">
@@ -123,6 +129,15 @@ export function VideoPlayer({ src, title }: VideoPlayerProps) {
       >
         <Maximize className="w-5 h-5" />
       </button>
+    </div>
+    <div className="flex justify-end mt-2">
+      <button
+        onClick={reportProblem}
+        className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+      >
+        Stream not loading? Report a problem
+      </button>
+    </div>
     </div>
   );
 }

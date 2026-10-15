@@ -6,28 +6,57 @@ import { navigate } from '@/lib/router';
 import { getTitle, getMediaType, getReleaseDate, formatYear, truncate } from '@/lib/utils';
 
 interface HeroProps {
-  movie: Movie;
-  inWatchlist: boolean;
+  movies: Movie[];
+  inWatchlist: (id: number) => boolean;
   onToggleWatchlist: (movie: Movie) => void;
 }
 
-export function Hero({ movie, inWatchlist, onToggleWatchlist }: HeroProps) {
+const ROTATE_MS = 8000;
+
+export function Hero({ movies, inWatchlist, onToggleWatchlist }: HeroProps) {
+  const [index, setIndex] = useState(0);
   const [loaded, setLoaded] = useState(false);
-  const mediaType = getMediaType(movie);
-  const title = getTitle(movie);
-  const year = formatYear(getReleaseDate(movie));
-  const backdrop = backdropUrl(movie.backdrop_path, 'original');
+  const [paused, setPaused] = useState(false);
+
+  const items = movies.filter((m) => m.backdrop_path).slice(0, 5);
+  const movie = items[index] ?? movies[0];
+  const count = items.length;
+
+  useEffect(() => {
+    setIndex(0);
+  }, [movies.length]);
 
   useEffect(() => {
     setLoaded(false);
-  }, [movie.id]);
+  }, [movie?.id]);
+
+  useEffect(() => {
+    if (paused || count < 2) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const t = setInterval(() => {
+      setIndex((i) => (i + 1) % count);
+    }, ROTATE_MS);
+    return () => clearInterval(t);
+  }, [paused, count]);
+
+  if (!movie) return null;
+
+  const mediaType = getMediaType(movie);
+  const title = getTitle(movie);
+  const year = formatYear(getReleaseDate(movie));
+  const backdrop = backdropUrl(movie.backdrop_path, 'w1280');
 
   return (
-    <div className="relative h-[70vh] min-h-[500px] w-full">
+    <div
+      className="relative h-[70vh] min-h-[500px] w-full"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
       {!loaded && <div className="absolute inset-0 bg-zinc-900 animate-pulse" />}
 
       {backdrop && (
         <img
+          key={movie.id}
           src={backdrop}
           alt={title}
           loading="eager"
@@ -56,6 +85,11 @@ export function Hero({ movie, inWatchlist, onToggleWatchlist }: HeroProps) {
               </span>
             </div>
             {year && <span className="text-sm text-zinc-300">{year}</span>}
+            {count > 1 && (
+              <span className="text-xs text-zinc-500">
+                {index + 1} / {count}
+              </span>
+            )}
           </div>
 
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
@@ -84,15 +118,31 @@ export function Hero({ movie, inWatchlist, onToggleWatchlist }: HeroProps) {
             <button
               onClick={() => onToggleWatchlist(movie)}
               className="w-11 h-11 flex items-center justify-center bg-zinc-800/80 backdrop-blur text-white rounded-full hover:bg-zinc-700/80 transition-colors border border-zinc-600"
-              title={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
+              title={inWatchlist(movie.id) ? 'Remove from watchlist' : 'Add to watchlist'}
+              aria-label={inWatchlist(movie.id) ? 'Remove from watchlist' : 'Add to watchlist'}
             >
-              {inWatchlist ? (
+              {inWatchlist(movie.id) ? (
                 <Check className="w-5 h-5 text-green-400" />
               ) : (
                 <Plus className="w-5 h-5" />
               )}
             </button>
           </div>
+
+          {count > 1 && (
+            <div className="flex items-center gap-2 mt-6">
+              {items.map((m, i) => (
+                <button
+                  key={m.id}
+                  onClick={() => setIndex(i)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === index ? 'w-8 bg-white' : 'w-4 bg-zinc-600 hover:bg-zinc-400'
+                  }`}
+                  aria-label={`Show ${getTitle(m)}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -50,7 +50,7 @@ export function MovieCard({ movie, inWatchlist, onToggleWatchlist }: MovieCardPr
           e.stopPropagation();
           onToggleWatchlist(movie);
         }}
-        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-black/90 hover:scale-110"
+        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all hover:bg-black/90 hover:scale-110"
         aria-label={inWatchlist ? `Remove ${title} from watchlist` : `Add ${title} to watchlist`}
         title={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
       >
