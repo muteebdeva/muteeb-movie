@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Search, Bookmark, Menu, X, Compass } from 'lucide-react';
 import { navigate } from '@/lib/router';
 import { SearchBox } from '@/components/SearchBox';
+import { Logo } from '@/components/Logo';
 import { useSearchHistory } from '@/lib/useHistory';
 
 interface NavbarProps {
@@ -43,7 +44,7 @@ export function Navbar({ onSearch, initialQuery = '' }: NavbarProps) {
             className="flex items-center gap-2 group"
             aria-label="Muteeb Movie home"
           >
-            <img src="/logo.png" alt="Muteeb Movie" className="w-8 h-8 rounded object-contain transition-transform group-hover:scale-105" />
+            <Logo className="w-8 h-8 rounded object-contain transition-transform group-hover:scale-105" />
             <span className="text-xl font-bold tracking-tight text-white">
               Muteeb<span className="text-red-500"> Movie</span>
             </span>
