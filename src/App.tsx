@@ -21,6 +21,8 @@ function App() {
   const {
     history: watchHistory,
     recordWatch,
+    updateProgress,
+    clearResume,
     removeFromHistory,
     clearHistory,
   } = useWatchHistory();
@@ -65,6 +67,9 @@ function App() {
             inWatchlist={isInWatchlist}
             onToggleWatchlist={handleToggleWatchlist}
             onRecordWatch={recordWatch}
+            watchHistory={watchHistory}
+            onUpdateProgress={updateProgress}
+            onClearResume={clearResume}
           />
         )}
 
@@ -75,6 +80,9 @@ function App() {
             inWatchlist={isInWatchlist}
             onToggleWatchlist={handleToggleWatchlist}
             onRecordWatch={recordWatch}
+            watchHistory={watchHistory}
+            onUpdateProgress={updateProgress}
+            onClearResume={clearResume}
           />
         )}
 

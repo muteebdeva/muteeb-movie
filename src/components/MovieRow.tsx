@@ -11,9 +11,11 @@ interface MovieRowProps {
   /** Optional per-item remove action (e.g. for history rows). */
   onRemove?: (movie: Movie) => void;
   removeLabel?: string;
+  /** Optional genuine playback progress 0..1 per item (e.g. Continue Watching). */
+  progressFor?: (movie: Movie) => number | undefined;
 }
 
-export function MovieRow({ title, movies, inWatchlist, onToggleWatchlist, onRemove, removeLabel = 'Remove' }: MovieRowProps) {
+export function MovieRow({ title, movies, inWatchlist, onToggleWatchlist, onRemove, removeLabel = 'Remove', progressFor }: MovieRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -53,6 +55,7 @@ export function MovieRow({ title, movies, inWatchlist, onToggleWatchlist, onRemo
                 movie={movie}
                 inWatchlist={inWatchlist(movie.id)}
                 onToggleWatchlist={onToggleWatchlist}
+                progress={progressFor?.(movie)}
               />
               {onRemove && (
                 <button

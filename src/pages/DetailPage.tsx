@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Play,
   Star,
@@ -19,13 +19,15 @@ import { getDetails, getSeason, getWatchProviders, imgUrl, backdropUrl, type Wat
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { MovieRow } from '@/components/MovieRow';
 import { Spinner, ErrorState } from '@/components/Spinner';
-import { embedUrl } from '@/lib/vidapi';
+import { embedUrl, withResumeAt } from '@/lib/vidapi';
 import type { WatchHistoryItem } from '@/lib/useHistory';
+import type { PlayerEventData } from '@/lib/playerEvents';
 import {
   getTitle,
   formatDate,
   formatRuntime,
   formatYear,
+  formatClock,
   truncate,
   ratingColor,
 } from '@/lib/utils';
@@ -36,6 +38,9 @@ interface DetailPageProps {
   inWatchlist: (id: number) => boolean;
   onToggleWatchlist: (item: Omit<WatchlistItem, 'added_at'>, movie: Movie) => void;
   onRecordWatch: (item: Omit<WatchHistoryItem, 'watched_at'>) => void;
+  watchHistory: WatchHistoryItem[];
+  onUpdateProgress: (id: number, progress: number, duration: number) => void;
+  onClearResume: (id: number) => void;
 }
 
 function formatMoney(n?: number): string | null {
@@ -51,6 +56,9 @@ export function DetailPage({
   inWatchlist,
   onToggleWatchlist,
   onRecordWatch,
+  watchHistory,
+  onUpdateProgress,
+  onClearResume,
 }: DetailPageProps) {
   const [details, setDetails] = useState<MediaDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,12 +71,15 @@ export function DetailPage({
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [episodesLoading, setEpisodesLoading] = useState(false);
   const [currentPlayerSrc, setCurrentPlayerSrc] = useState<string>('');
+  const [resumeLabel, setResumeLabel] = useState<string | null>(null);
+  const lastSaveRef = useRef(0);
 
   const loadDetails = useCallback(async () => {
     setLoading(true);
     setError(false);
     setShowPlayer(false);
     setShowTrailer(false);
+    setResumeLabel(null);
     setProviders(null);
     try {
       const data = await getDetails(mediaType, id);
@@ -114,6 +125,30 @@ export function DetailPage({
     };
   }, [mediaType, details, selectedSeason]);
 
+  const imdbId = details?.imdb_id || details?.external_ids?.imdb_id;
+
+  /**
+   * Handle validated PLAYER_EVENT messages from the provider. Only events
+   * whose imdb/tmdb id matches this title are accepted; positions are
+   * persisted (throttled) so "Continue Watching" reflects real progress.
+   */
+  const handlePlayerEvent = useCallback(
+    (data: PlayerEventData) => {
+      const ours = [imdbId, String(id)].filter(Boolean) as string[];
+      const theirs = [data.info.imdb, data.info.tmdb].filter((v): v is string => !!v);
+      if (!theirs.some((t) => ours.includes(t))) return;
+      if (data.status === 'completed') {
+        onClearResume(id);
+        return;
+      }
+      const now = Date.now();
+      if (now - lastSaveRef.current < 15000) return;
+      lastSaveRef.current = now;
+      onUpdateProgress(id, data.progress, data.duration);
+    },
+    [id, imdbId, onUpdateProgress, onClearResume]
+  );
+
   if (loading) return <Spinner message="Loading details..." />;
   if (error)
     return (
@@ -129,29 +164,42 @@ export function DetailPage({
   const backdrop = backdropUrl(details.backdrop_path, 'w1280');
   const inList = inWatchlist(details.id);
 
-  const imdbId = details.imdb_id || details.external_ids?.imdb_id;
-
-  const recordWatch = () => {
+  const recordWatch = (season?: number, episode?: number) => {
     onRecordWatch({
       id: details.id,
       media_type: mediaType,
       title,
       poster_path: details.poster_path,
       backdrop_path: details.backdrop_path,
+      ...(mediaType === 'tv'
+        ? { season: season ?? selectedSeason, episode: episode ?? selectedEpisode }
+        : {}),
     });
   };
 
+  /** Genuine saved position for this exact title/episode, in seconds (0 = none). */
+  const getResumeSeconds = (season?: number, episode?: number): number => {
+    const entry = watchHistory.find((h) => h.id === id);
+    if (!entry?.progress || !entry.duration) return 0;
+    if (mediaType === 'tv' && (entry.season !== season || entry.episode !== episode)) return 0;
+    if (entry.progress < 30 || entry.progress > entry.duration * 0.95) return 0;
+    return Math.floor(entry.progress);
+  };
+
   const handlePlay = () => {
-    const src = embedUrl(
-      mediaType,
-      details.id,
-      imdbId,
-      mediaType === 'tv' ? selectedSeason : undefined,
-      mediaType === 'tv' ? selectedEpisode : undefined
-    );
+    const saved = watchHistory.find((h) => h.id === id);
+    const season = mediaType === 'tv' ? saved?.season ?? selectedSeason : undefined;
+    const episode = mediaType === 'tv' ? saved?.episode ?? selectedEpisode : undefined;
+    if (mediaType === 'tv') {
+      if (season !== undefined) setSelectedSeason(season);
+      if (episode !== undefined) setSelectedEpisode(episode);
+    }
+    const resumeAt = getResumeSeconds(season, episode);
+    const src = withResumeAt(embedUrl(mediaType, details.id, imdbId, season, episode), resumeAt);
     setCurrentPlayerSrc(src);
+    setResumeLabel(resumeAt > 0 ? formatClock(resumeAt) : null);
     setShowPlayer(true);
-    recordWatch();
+    recordWatch(season, episode);
     setTimeout(() => {
       document.getElementById('player-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -159,10 +207,15 @@ export function DetailPage({
 
   const handleEpisodePlay = (ep: Episode) => {
     setSelectedEpisode(ep.episode_number);
-    const src = embedUrl(mediaType, details.id, imdbId, selectedSeason, ep.episode_number);
+    const resumeAt = getResumeSeconds(selectedSeason, ep.episode_number);
+    const src = withResumeAt(
+      embedUrl(mediaType, details.id, imdbId, selectedSeason, ep.episode_number),
+      resumeAt
+    );
     setCurrentPlayerSrc(src);
+    setResumeLabel(resumeAt > 0 ? formatClock(resumeAt) : null);
     setShowPlayer(true);
-    recordWatch();
+    recordWatch(selectedSeason, ep.episode_number);
     setTimeout(() => {
       document.getElementById('player-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -429,14 +482,19 @@ export function DetailPage({
         {showPlayer && currentPlayerSrc && (
           <div id="player-section" className="max-w-[1600px] mx-auto mt-10">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">Now Playing: {title}</h2>
+              <div>
+                <h2 className="text-xl font-bold text-white">Now Playing: {title}</h2>
+                {resumeLabel && (
+                  <p className="text-sm text-zinc-400 mt-1">Resuming from {resumeLabel}</p>
+                )}
+              </div>
               {mediaType === 'tv' && (
                 <span className="text-sm text-zinc-400">
                   S{selectedSeason} · E{selectedEpisode}
                 </span>
               )}
             </div>
-            <VideoPlayer src={currentPlayerSrc} title={title} />
+            <VideoPlayer src={currentPlayerSrc} title={title} onPlayerEvent={handlePlayerEvent} />
           </div>
         )}
 

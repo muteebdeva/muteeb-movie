@@ -187,6 +187,13 @@ export function HomePage({
     media_type: h.media_type,
   }));
 
+  const historyProgress = new Map<number, number>();
+  for (const h of watchHistory) {
+    if (h.progress && h.duration && h.duration > 0) {
+      historyProgress.set(h.id, h.progress / h.duration);
+    }
+  }
+
   return (
     <div>
       {(trending.length > 0 || popularMovies.length > 0) && (
@@ -232,12 +239,13 @@ export function HomePage({
 
         {historyMovies.length > 0 && (
           <MovieRow
-            title="Recently Watched"
+            title="Continue Watching"
             movies={historyMovies}
             inWatchlist={inWatchlist}
             onToggleWatchlist={handleToggle}
             onRemove={(m) => onRemoveFromHistory(m.id)}
             removeLabel="Remove from history"
+            progressFor={(m) => historyProgress.get(m.id)}
           />
         )}
 

@@ -36,3 +36,19 @@ export function embedUrl(
   }
   return tvEmbedUrl(id, season ?? 1, episode ?? 1, imdbId);
 }
+
+/**
+ * Append the documented `resumeAt` parameter so playback starts where the
+ * viewer left off. Returns the URL unchanged for meaningless positions.
+ */
+export function withResumeAt(src: string, seconds: number): string {
+  const s = Math.floor(seconds);
+  if (!Number.isFinite(s) || s < 5) return src;
+  try {
+    const url = new URL(src);
+    url.searchParams.set('resumeAt', String(s));
+    return url.toString();
+  } catch {
+    return src;
+  }
+}

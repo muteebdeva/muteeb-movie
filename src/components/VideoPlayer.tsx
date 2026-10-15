@@ -1,20 +1,27 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Loader2, AlertCircle, Maximize, RotateCcw, ExternalLink } from 'lucide-react';
+import { parsePlayerEvent, type PlayerEventData, type PlayerQuality } from '@/lib/playerEvents';
 
 interface VideoPlayerProps {
   src: string;
   title: string;
+  /** Called with validated PLAYER_EVENT data from the provider's iframe. */
+  onPlayerEvent?: (data: PlayerEventData) => void;
 }
 
 const SPINNER_TIMEOUT_MS = 8000;
 
-export function VideoPlayer({ src, title }: VideoPlayerProps) {
+export function VideoPlayer({ src, title, onPlayerEvent }: VideoPlayerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  const [quality, setQuality] = useState<PlayerQuality | null>(null);
+  const [availableQualities, setAvailableQualities] = useState<string[]>([]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedRef = useRef(false);
+  const onPlayerEventRef = useRef(onPlayerEvent);
+  onPlayerEventRef.current = onPlayerEvent;
 
   const handleLoad = useCallback(() => {
     if (loadedRef.current) return;
@@ -30,6 +37,8 @@ export function VideoPlayer({ src, title }: VideoPlayerProps) {
     loadedRef.current = false;
     setLoading(true);
     setError(false);
+    setQuality(null);
+    setAvailableQualities([]);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
       if (!loadedRef.current) {
@@ -43,6 +52,20 @@ export function VideoPlayer({ src, title }: VideoPlayerProps) {
       }
     };
   }, [src, retryKey]);
+
+  // Listen for the provider's PLAYER_EVENT messages. Origin and shape are
+  // validated inside parsePlayerEvent — anything else is ignored.
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const data = parsePlayerEvent(event);
+      if (!data) return;
+      if (data.quality) setQuality(data.quality);
+      if (data.availableQualities.length > 0) setAvailableQualities(data.availableQualities);
+      onPlayerEventRef.current?.(data);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   const handleRetry = useCallback(() => {
     setRetryKey((k) => k + 1);
@@ -122,6 +145,21 @@ export function VideoPlayer({ src, title }: VideoPlayerProps) {
         onLoad={handleLoad}
       />
 
+      {/* Genuine quality badge: shows ONLY the rendition the provider itself
+          reports via PLAYER_EVENT — never guessed, never hardcoded. */}
+      {quality && (
+        <div
+          className="absolute top-3 left-3 z-20 px-2 py-1 rounded bg-black/60 backdrop-blur-sm text-[11px] font-semibold text-white pointer-events-none"
+          title={
+            availableQualities.length > 0
+              ? `Source offers: ${availableQualities.join(' · ')}`
+              : 'Current stream quality'
+          }
+        >
+          {quality.label}
+        </div>
+      )}
+
       <button
         onClick={enterFullscreen}
         className="absolute top-3 right-3 z-20 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
@@ -130,7 +168,12 @@ export function VideoPlayer({ src, title }: VideoPlayerProps) {
         <Maximize className="w-5 h-5" />
       </button>
     </div>
-    <div className="flex justify-end mt-2">
+    <div className="flex justify-between items-center mt-2">
+      <p className="text-xs text-zinc-500">
+        {availableQualities.length > 0
+          ? `Available qualities: ${availableQualities.join(' · ')}`
+          : 'Quality is set automatically by the stream source.'}
+      </p>
       <button
         onClick={reportProblem}
         className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"

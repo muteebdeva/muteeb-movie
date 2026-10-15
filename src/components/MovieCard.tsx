@@ -8,9 +8,11 @@ interface MovieCardProps {
   movie: Movie;
   inWatchlist: boolean;
   onToggleWatchlist: (movie: Movie) => void;
+  /** Genuine playback progress 0..1 from the provider's PLAYER_EVENT. */
+  progress?: number;
 }
 
-export function MovieCard({ movie, inWatchlist, onToggleWatchlist }: MovieCardProps) {
+export function MovieCard({ movie, inWatchlist, onToggleWatchlist, progress }: MovieCardProps) {
   const mediaType = getMediaType(movie);
   const title = getTitle(movie);
   const year = formatYear(getReleaseDate(movie));
@@ -43,6 +45,14 @@ export function MovieCard({ movie, inWatchlist, onToggleWatchlist }: MovieCardPr
             {year && <span className="text-zinc-400">· {year}</span>}
           </div>
         </div>
+        {progress != null && progress > 0 && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-700/80">
+            <div
+              className="h-full bg-red-600"
+              style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
+            />
+          </div>
+        )}
       </div>
 
       <button

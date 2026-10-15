@@ -190,6 +190,11 @@ export function WatchlistPage({
                     }}
                     inWatchlist={inWatchlist(item.id)}
                     onToggleWatchlist={handleToggle}
+                    progress={
+                      item.progress && item.duration && item.duration > 0
+                        ? item.progress / item.duration
+                        : undefined
+                    }
                   />
                   <button
                     onClick={(e) => {
