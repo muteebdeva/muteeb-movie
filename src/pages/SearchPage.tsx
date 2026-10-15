@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Search as SearchIcon, Loader2, History, X, Compass } from 'lucide-react';
-import type { Movie, WatchlistItem } from '@/types';
-import { searchMulti } from '@/lib/tmdb';
+import type { Genre, Movie, WatchlistItem } from '@/types';
+import { getGenres, searchMulti } from '@/lib/tmdb';
 import { navigate } from '@/lib/router';
 import { MovieCard } from '@/components/MovieCard';
 import { Spinner, ErrorState } from '@/components/Spinner';
 import { useSearchHistory } from '@/lib/useHistory';
-import { getMediaType } from '@/lib/utils';
+import { getMediaType, getReleaseDate } from '@/lib/utils';
 
 interface SearchPageProps {
   query: string;
@@ -28,12 +28,23 @@ export function SearchPage({
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [genreId, setGenreId] = useState<number | null>(null);
+  const [year, setYear] = useState<number | null>(null);
   const { searches, recordSearch, removeSearch, clearSearches } = useSearchHistory();
 
   const trimmed = query.trim();
 
   useEffect(() => {
+    getGenres()
+      .then((g) => setGenres(g.movie))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     setTypeFilter('all');
+    setGenreId(null);
+    setYear(null);
     if (!trimmed) {
       setResults([]);
       setPage(1);
@@ -90,8 +101,14 @@ export function SearchPage({
       .finally(() => setLoadingMore(false));
   };
 
-  const visibleResults =
-    typeFilter === 'all' ? results : results.filter((m) => getMediaType(m) === typeFilter);
+  const visibleResults = results
+    .filter((m) => typeFilter === 'all' || getMediaType(m) === typeFilter)
+    .filter((m) => genreId == null || (m.genre_ids || []).includes(genreId))
+    .filter((m) => {
+      if (year == null) return true;
+      const d = getReleaseDate(m);
+      return !!d && d.startsWith(String(year));
+    });
 
   const handleToggle = (movie: Movie) => {
     onToggleWatchlist(
@@ -174,12 +191,12 @@ export function SearchPage({
         )}
 
         {trimmed && (
-          <div className="flex gap-2 mb-6">
+          <div className="flex flex-wrap items-center gap-2 mb-6">
             {(['all', 'movie', 'tv'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTypeFilter(t)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   typeFilter === t
                     ? 'bg-white text-black'
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -188,6 +205,32 @@ export function SearchPage({
                 {t === 'all' ? 'All' : t === 'movie' ? 'Movies' : 'TV Shows'}
               </button>
             ))}
+            <select
+              value={genreId == null ? '' : String(genreId)}
+              onChange={(e) => setGenreId(e.target.value ? Number(e.target.value) : null)}
+              className="bg-zinc-800 text-zinc-200 text-sm rounded-full px-4 py-2 border border-zinc-700 outline-none focus:border-red-500"
+              aria-label="Filter by genre"
+            >
+              <option value="">Any genre</option>
+              {genres.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={year == null ? '' : String(year)}
+              onChange={(e) => setYear(e.target.value ? Number(e.target.value) : null)}
+              className="bg-zinc-800 text-zinc-200 text-sm rounded-full px-4 py-2 border border-zinc-700 outline-none focus:border-red-500"
+              aria-label="Filter by year"
+            >
+              <option value="">Any year</option>
+              {Array.from({ length: 30 }, (_, i) => 2026 - i).map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 

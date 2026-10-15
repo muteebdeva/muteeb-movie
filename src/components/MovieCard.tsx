@@ -19,10 +19,12 @@ export function MovieCard({ movie, inWatchlist, onToggleWatchlist, progress }: M
   const poster = imgUrl(movie.poster_path, 'w342');
 
   return (
-    <div className="group relative w-[160px] sm:w-[180px] md:w-[200px] shrink-0 cursor-pointer transition-transform duration-300 hover:scale-105">
-      <div
-        className="relative aspect-[2/3] rounded-lg overflow-hidden bg-zinc-900"
+    <div className="group relative w-[160px] sm:w-[180px] md:w-[200px] shrink-0 snap-start cursor-pointer transition-transform duration-300 hover:scale-105">
+      <button
+        type="button"
+        className="relative block w-full aspect-[2/3] rounded-lg overflow-hidden bg-zinc-900 text-left"
         onClick={() => navigate(`/${mediaType}/${movie.id}`)}
+        aria-label={`View details for ${title}`}
       >
         {poster ? (
           <img
@@ -53,14 +55,14 @@ export function MovieCard({ movie, inWatchlist, onToggleWatchlist, progress }: M
             />
           </div>
         )}
-      </div>
+      </button>
 
       <button
         onClick={(e) => {
           e.stopPropagation();
           onToggleWatchlist(movie);
         }}
-        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all hover:bg-black/90 hover:scale-110"
+        className="absolute top-2 right-2 w-9 h-9 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all hover:bg-black/90 hover:scale-110"
         aria-label={inWatchlist ? `Remove ${title} from watchlist` : `Add ${title} to watchlist`}
         title={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
       >
@@ -72,7 +74,10 @@ export function MovieCard({ movie, inWatchlist, onToggleWatchlist, progress }: M
       </button>
 
       <div className="mt-2 px-0.5">
-        <h3 className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">
+        <h3
+          className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors"
+          title={title}
+        >
           {title}
         </h3>
         <p className="text-xs text-zinc-500 mt-0.5">

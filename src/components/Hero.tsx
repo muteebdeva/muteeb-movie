@@ -63,7 +63,7 @@ export function Hero({ movies, inWatchlist, onToggleWatchlist }: HeroProps) {
 
   return (
     <div
-      className="relative h-[70vh] min-h-[500px] w-full"
+      className="relative h-[62vh] min-h-[440px] md:h-[70vh] md:min-h-[500px] w-full"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -90,7 +90,7 @@ export function Hero({ movies, inWatchlist, onToggleWatchlist }: HeroProps) {
       <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-transparent" />
       <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/80 via-transparent to-transparent" />
 
-      <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-10 pb-12 md:pb-16">
+      <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-10 pb-8 md:pb-16">
         <div className="max-w-2xl">
           <div className="flex items-center gap-3 mb-3">
             <span className="px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider bg-red-600 text-white">
@@ -110,15 +110,15 @@ export function Hero({ movies, inWatchlist, onToggleWatchlist }: HeroProps) {
             )}
           </div>
 
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+          <h1 className="text-[1.7rem] leading-tight sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-3 md:mb-4 line-clamp-2 md:line-clamp-none">
             {title}
           </h1>
 
-          <p className="text-sm md:text-base text-zinc-300 mb-6 max-w-xl leading-relaxed line-clamp-3">
+          <p className="text-sm md:text-base text-zinc-300 mb-5 md:mb-6 max-w-xl leading-relaxed line-clamp-2 md:line-clamp-3">
             {truncate(movie.overview || 'No description available.', 250)}
           </p>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 md:gap-3">
             <button
               onClick={() => navigate(`/${mediaType}/${movie.id}`)}
               className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-lg font-semibold hover:bg-zinc-200 transition-colors"
@@ -148,7 +148,7 @@ export function Hero({ movies, inWatchlist, onToggleWatchlist }: HeroProps) {
           </div>
 
           {count > 1 && (
-            <div className="flex items-center gap-2 mt-6">
+            <div className="flex items-center gap-2 mt-4 md:mt-6">
               {items.map((m, i) => (
                 <button
                   key={m.id}

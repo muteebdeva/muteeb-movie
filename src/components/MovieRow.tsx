@@ -46,7 +46,7 @@ export function MovieRow({ title, movies, inWatchlist, onToggleWatchlist, onRemo
 
         <div
           ref={scrollRef}
-          className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide px-4 sm:px-6 lg:px-10 pb-2"
+          className="flex gap-3 md:gap-4 overflow-x-auto snap-x scrollbar-hide px-4 sm:px-6 lg:px-10 pb-2"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {movies.map((movie) => (
@@ -63,7 +63,7 @@ export function MovieRow({ title, movies, inWatchlist, onToggleWatchlist, onRemo
                     e.stopPropagation();
                     onRemove(movie);
                   }}
-                  className="absolute top-2 left-2 w-7 h-7 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center text-zinc-400 hover:text-white hover:bg-black/90 transition-colors"
+                  className="absolute top-2 left-2 w-8 h-8 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center text-zinc-400 hover:text-white hover:bg-black/90 transition-colors"
                   aria-label={`${removeLabel}: ${movie.title || movie.name}`}
                   title={removeLabel}
                 >
