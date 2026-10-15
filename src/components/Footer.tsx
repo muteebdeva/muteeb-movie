@@ -39,10 +39,11 @@ export function Footer() {
 
           <div className="flex items-center gap-3 text-zinc-500">
             <a
-              href="https://www.themoviedb.org"
+              href="https://github.com/muteebdeva/muteeb-movie"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-white transition-colors"
+              aria-label="Muteeb Movie on GitHub"
             >
               <Github className="w-5 h-5" />
             </a>
