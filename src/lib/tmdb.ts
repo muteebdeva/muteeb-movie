@@ -168,3 +168,108 @@ export async function discoverByGenre(
   });
   return tmdbFetch<SearchResult>(`/discover/${mediaType}`, params);
 }
+
+export interface DiscoverFilters {
+  type: 'movie' | 'tv';
+  genreId?: number;
+  minRating?: number;
+  year?: number;
+  sortBy?: string;
+  language?: string;
+  originCountry?: string;
+  voteCountGte?: number;
+  voteCountLte?: number;
+}
+
+const MOVIE_SORTS = new Set([
+  'popularity.desc',
+  'popularity.asc',
+  'vote_average.desc',
+  'vote_average.asc',
+  'primary_release_date.desc',
+  'primary_release_date.asc',
+  'title.asc',
+]);
+
+const TV_SORTS = new Set([
+  'popularity.desc',
+  'popularity.asc',
+  'vote_average.desc',
+  'vote_average.asc',
+  'first_air_date.desc',
+  'first_air_date.asc',
+]);
+
+/**
+ * Structured discovery backed by TMDB's /discover endpoint — all filtering
+ * and sorting happens server-side so pagination stays honest.
+ */
+export async function discoverMedia(
+  filters: DiscoverFilters,
+  page = 1
+): Promise<SearchResult> {
+  const params = new URLSearchParams({ page: String(page) });
+
+  if (filters.genreId) params.set('with_genres', String(filters.genreId));
+  if (filters.minRating) params.set('vote_average.gte', String(filters.minRating));
+  if (filters.voteCountGte != null) params.set('vote_count.gte', String(filters.voteCountGte));
+  if (filters.voteCountLte != null) params.set('vote_count.lte', String(filters.voteCountLte));
+  if (filters.language) params.set('with_original_language', filters.language);
+  if (filters.originCountry) params.set('with_origin_country', filters.originCountry);
+  if (filters.year) {
+    params.set(
+      filters.type === 'movie' ? 'primary_release_year' : 'first_air_date_year',
+      String(filters.year)
+    );
+  }
+
+  const allowedSorts = filters.type === 'movie' ? MOVIE_SORTS : TV_SORTS;
+  params.set(
+    'sort_by',
+    filters.sortBy && allowedSorts.has(filters.sortBy)
+      ? filters.sortBy
+      : 'popularity.desc'
+  );
+
+  const data = await tmdbFetch<SearchResult>(`/discover/${filters.type}`, params);
+  // Tag results with their media type so cards route correctly.
+  data.results = (data.results || []).map((r) => ({ ...r, media_type: filters.type }));
+  return data;
+}
+
+export interface WatchProvider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string | null;
+}
+
+export interface WatchProviders {
+  flatrate: WatchProvider[];
+  rent: WatchProvider[];
+  buy: WatchProvider[];
+  link: string | null;
+}
+
+/**
+ * Legitimate "where to watch" data from TMDB. Prefers the viewer's region
+ * (India) and falls back to the US catalogue.
+ */
+export async function getWatchProviders(
+  mediaType: MediaType,
+  id: number
+): Promise<WatchProviders | null> {
+  const data = await tmdbFetch<{ results?: Record<string, {
+    link?: string;
+    flatrate?: WatchProvider[];
+    rent?: WatchProvider[];
+    buy?: WatchProvider[];
+  }> }>(`/${mediaType}/${id}/watch/providers`);
+  const region = data.results?.['IN'] ?? data.results?.['US'];
+  if (!region) return null;
+  return {
+    flatrate: region.flatrate ?? [],
+    rent: region.rent ?? [],
+    buy: region.buy ?? [],
+    link: region.link ?? null,
+  };
+}

@@ -9,6 +9,7 @@ import { ConfigWarning } from '@/components/ConfigWarning';
 import { HomePage } from '@/pages/HomePage';
 import { DetailPage } from '@/pages/DetailPage';
 import { SearchPage } from '@/pages/SearchPage';
+import { BrowsePage } from '@/pages/BrowsePage';
 import { WatchlistPage } from '@/pages/WatchlistPage';
 
 function App() {
@@ -68,6 +69,13 @@ function App() {
         {matched.page === 'search' && (
           <SearchPage
             query={matched.query || ''}
+            inWatchlist={isInWatchlist}
+            onToggleWatchlist={handleToggleWatchlist}
+          />
+        )}
+
+        {matched.page === 'browse' && (
+          <BrowsePage
             inWatchlist={isInWatchlist}
             onToggleWatchlist={handleToggleWatchlist}
           />

@@ -62,6 +62,8 @@ export interface Episode {
 export interface MediaDetails extends Movie {
   genres: Genre[];
   runtime?: number;
+  budget?: number;
+  revenue?: number;
   episode_run_time?: number[];
   number_of_seasons?: number;
   number_of_episodes?: number;
