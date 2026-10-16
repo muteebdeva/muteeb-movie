@@ -100,7 +100,19 @@
       "title": "Staff Picks",
       "description": "Hand-picked by the admin",
       "visible": true,
-      "titles": []
+      "titles": [
+        {
+          "tmdb_id": 11036,
+          "media_type": "movie",
+          "sort_order": 0,
+          "featured": false,
+          "hidden": false,
+          "override_title": null,
+          "override_overview": null,
+          "override_poster": null,
+          "override_backdrop": null
+        }
+      ]
     }
   }
 }
