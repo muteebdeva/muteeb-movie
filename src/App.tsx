@@ -13,7 +13,6 @@ import { DetailPage } from '@/pages/DetailPage';
 import { SearchPage } from '@/pages/SearchPage';
 import { BrowsePage } from '@/pages/BrowsePage';
 import { WatchlistPage } from '@/pages/WatchlistPage';
-import { AdminApp } from '@/pages/admin/AdminApp';
 
 function App() {
   const route = useHashRoute();
@@ -64,16 +63,6 @@ function App() {
     }
   };
 
-  // The admin panel is always reachable (even without a TMDB key or during
-  // maintenance) — it has its own auth and layout.
-  if (matched.page === 'admin') {
-    return (
-      <div className="min-h-screen bg-zinc-950">
-        <AdminApp />
-      </div>
-    );
-  }
-
   if (!isConfigured()) {
     return (
       <div className="min-h-screen bg-zinc-950">
@@ -82,7 +71,8 @@ function App() {
     );
   }
 
-  // Maintenance mode (set in the admin panel). Admin route above bypasses it.
+  // Maintenance mode (set in the admin panel, which lives in its own repo
+  // and deployment: muteebdeva/muteeb-movie-admin).
   if (siteConfig?.maintenance?.enabled) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6 text-center">
