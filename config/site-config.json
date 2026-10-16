@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "site": {
+    "name": "Muteeb Movie",
+    "tagline": "Discover your next favorite",
+    "announcement": {
+      "enabled": false,
+      "text": ""
+    },
+    "maintenance": {
+      "enabled": false,
+      "message": "We'll be back soon."
+    }
+  },
+  "player": {
+    "autoplay": false,
+    "default_quality": "auto"
+  },
+  "providers": [
+    {
+      "key": "vidapi",
+      "display_name": "VidAPI",
+      "enabled": true,
+      "priority": 0,
+      "notes": ""
+    }
+  ],
+  "homepage": {
+    "sections": [
+      {
+        "key": "continue_watching",
+        "title": "Continue Watching",
+        "source": "internal:history",
+        "visible": true
+      },
+      {
+        "key": "trending",
+        "title": "Trending This Week",
+        "source": "tmdb:trending",
+        "visible": true
+      },
+      {
+        "key": "popular_movies",
+        "title": "Popular Movies",
+        "source": "tmdb:popular_movies",
+        "visible": true
+      },
+      {
+        "key": "hidden_gems",
+        "title": "Hidden Gems",
+        "source": "tmdb:hidden_gems",
+        "visible": true
+      },
+      {
+        "key": "popular_tv",
+        "title": "Popular TV Shows",
+        "source": "tmdb:popular_tv",
+        "visible": true
+      },
+      {
+        "key": "indian_cinema",
+        "title": "Indian Cinema",
+        "source": "tmdb:indian_cinema",
+        "visible": true
+      },
+      {
+        "key": "anime",
+        "title": "Anime",
+        "source": "tmdb:anime",
+        "visible": true
+      },
+      {
+        "key": "top_rated_movies",
+        "title": "Top Rated Movies",
+        "source": "tmdb:top_rated_movies",
+        "visible": true
+      },
+      {
+        "key": "top_rated_tv",
+        "title": "Top Rated TV Shows",
+        "source": "tmdb:top_rated_tv",
+        "visible": true
+      },
+      {
+        "key": "upcoming",
+        "title": "Upcoming Movies",
+        "source": "tmdb:upcoming",
+        "visible": true
+      },
+      {
+        "key": "staff_picks",
+        "title": "Staff Picks",
+        "source": "collection:staff_picks",
+        "visible": false
+      }
+    ]
+  },
+  "collections": {
+    "staff_picks": {
+      "title": "Staff Picks",
+      "description": "Hand-picked by the admin",
+      "visible": true,
+      "titles": []
+    }
+  }
+}

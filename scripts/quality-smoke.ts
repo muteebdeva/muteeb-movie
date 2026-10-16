@@ -54,5 +54,66 @@ ok('clock m:ss', formatClock(65) === '1:05');
 ok('clock h:mm:ss', formatClock(3725) === '1:02:05');
 ok('clock zero', formatClock(0) === '0:00');
 
-console.log(`\n${pass} passed, ${fail} failed`);
-process.exit(fail > 0 ? 1 : 0);
+// --- site config source (GitHub JSON) ---
+import { validateSiteConfig, defaultSiteConfig } from '../api/_lib/configSchema';
+import { loadSiteConfig, _resetConfigCache } from '../api/_lib/siteConfigSource';
+
+async function configTests() {
+  ok('default config validates', validateSiteConfig(defaultSiteConfig()).length === 0);
+  ok('default config has expected sections', defaultSiteConfig().homepage.sections.length >= 10);
+
+  const realFetch = globalThis.fetch;
+  const stubFetch = (body: string, status = 200) => {
+    (globalThis as unknown as { fetch: unknown }).fetch = async () => ({
+      ok: status >= 200 && status < 300,
+      status,
+      text: async () => body,
+    });
+  };
+
+  // valid remote
+  _resetConfigCache();
+  stubFetch(JSON.stringify(defaultSiteConfig()));
+  const r1 = await loadSiteConfig();
+  ok('loads remote config', r1.fromRemote && r1.config.site.name === 'Muteeb Movie');
+
+  // cache: second call within TTL does not refetch
+  let fetchCount = 0;
+  (globalThis as unknown as { fetch: unknown }).fetch = async () => {
+    fetchCount++;
+    return { ok: true, status: 200, text: async () => JSON.stringify(defaultSiteConfig()) };
+  };
+  await loadSiteConfig();
+  ok('caches remote config (no refetch)', fetchCount === 0);
+
+  // invalid JSON -> defaults
+  _resetConfigCache();
+  stubFetch('not json{');
+  const r2 = await loadSiteConfig();
+  ok('invalid JSON falls back to defaults', !r2.fromRemote && r2.config.site.name === 'Muteeb Movie');
+
+  // schema-invalid -> defaults
+  _resetConfigCache();
+  stubFetch(JSON.stringify({ schema_version: 999 }));
+  const r3 = await loadSiteConfig();
+  ok('schema-invalid falls back to defaults', !r3.fromRemote);
+
+  // network failure -> defaults
+  _resetConfigCache();
+  (globalThis as unknown as { fetch: unknown }).fetch = async () => { throw new Error('down'); };
+  const r4 = await loadSiteConfig();
+  ok('fetch failure falls back to defaults', !r4.fromRemote);
+
+  // oversized body rejected
+  _resetConfigCache();
+  stubFetch('x'.repeat(300 * 1024));
+  const r5 = await loadSiteConfig();
+  ok('oversized body falls back to defaults', !r5.fromRemote);
+
+  globalThis.fetch = realFetch;
+}
+
+configTests().then(() => {
+  console.log(`\n${pass} passed, ${fail} failed`);
+  process.exit(fail > 0 ? 1 : 0);
+});

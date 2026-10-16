@@ -7,7 +7,6 @@ import { MovieCard } from '@/components/MovieCard';
 import { Spinner, ErrorState } from '@/components/Spinner';
 import { useSearchHistory } from '@/lib/useHistory';
 import { getMediaType, getReleaseDate } from '@/lib/utils';
-import { trackEvent } from '@/lib/tracking';
 
 interface SearchPageProps {
   query: string;
@@ -67,7 +66,6 @@ export function SearchPage({
         setResults(filtered);
         setPage(1);
         setTotalPages(data.total_pages || 1);
-        trackEvent('search', { meta: { query: trimmed, zero_results: filtered.length === 0 } });
       })
       .catch((err) => {
         console.error(err);

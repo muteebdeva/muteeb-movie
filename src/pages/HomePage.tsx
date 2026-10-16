@@ -18,7 +18,6 @@ import { MovieRow } from '@/components/MovieRow';
 import { SkeletonRow, SkeletonHero } from '@/components/Skeleton';
 import { ErrorState } from '@/components/Spinner';
 import { getSiteConfig, type SiteConfig } from '@/lib/siteConfig';
-import { trackEvent } from '@/lib/tracking';
 import type { WatchlistItem } from '@/types';
 import type { WatchHistoryItem } from '@/lib/useHistory';
 
@@ -169,7 +168,6 @@ export function HomePage({
 
   useEffect(() => {
     loadData();
-    trackEvent('page_view');
     getSiteConfig().then((cfg) => {
       if (cfg) setSiteConfig(cfg);
     });

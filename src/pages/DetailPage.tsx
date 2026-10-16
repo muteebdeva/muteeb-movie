@@ -22,7 +22,6 @@ import { Spinner, ErrorState } from '@/components/Spinner';
 import { embedUrl, withResumeAt } from '@/lib/vidapi';
 import type { WatchHistoryItem } from '@/lib/useHistory';
 import type { PlayerEventData } from '@/lib/playerEvents';
-import { trackEvent } from '@/lib/tracking';
 import { isProviderEnabled } from '@/lib/siteConfig';
 import {
   getTitle,
@@ -117,11 +116,6 @@ export function DetailPage({
     loadDetails();
   }, [loadDetails]);
 
-  // Analytics: record a title view once details are available.
-  useEffect(() => {
-    if (details) trackEvent('title_open', { tmdb_id: id, media_type: mediaType });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [details?.id]);
 
   useEffect(() => {
     if (mediaType !== 'tv' || !details) return;
@@ -220,7 +214,6 @@ export function DetailPage({
     setResumeLabel(resumeAt > 0 ? formatClock(resumeAt) : null);
     setShowPlayer(true);
     recordWatch(season, episode);
-    trackEvent('play_start', { tmdb_id: id, media_type: mediaType });
     setTimeout(() => {
       document.getElementById('player-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -237,7 +230,6 @@ export function DetailPage({
     setResumeLabel(resumeAt > 0 ? formatClock(resumeAt) : null);
     setShowPlayer(true);
     recordWatch(selectedSeason, ep.episode_number);
-    trackEvent('play_start', { tmdb_id: id, media_type: mediaType });
     setTimeout(() => {
       document.getElementById('player-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -528,7 +520,6 @@ export function DetailPage({
                 src={currentPlayerSrc}
                 title={title}
                 onPlayerEvent={handlePlayerEvent}
-                onError={() => trackEvent('play_error', { tmdb_id: id, media_type: mediaType, meta: { source: 'user_report' } })}
               />
             )}
           </div>

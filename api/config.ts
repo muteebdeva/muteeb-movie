@@ -1,43 +1,30 @@
-// Public site configuration: enabled providers, visible homepage sections,
-// and public-safe settings. Never includes secrets. The SPA calls this on
-// load and falls back to built-in defaults on any failure (fail-soft).
-import { sb, isDbConfigured, sendDbNotConfigured } from './_lib/supabase.js';
+// Public site configuration, sourced from config/site-config.json in this
+// repository (read via CDN, no authentication). Never includes secrets — the
+// JSON file cannot contain them by schema validation. Fail-soft: any problem
+// falls back to hardcoded defaults so the site always renders.
+import { loadSiteConfig } from './_lib/siteConfigSource.js';
 import { ok, methodNotAllowed, handleApiError } from './_lib/respond.js';
 import type { Handler } from './_lib/types.js';
 
 const handler: Handler = async (req, res) => {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
   try {
-    if (!isDbConfigured()) return sendDbNotConfigured(res);
-
-    const [providers, sections, settings] = await Promise.all([
-      sb.get('provider_config', {
-        select: 'provider_key,display_name,is_enabled,priority',
-        order: 'priority.asc',
-      }),
-      sb.get('homepage_sections', {
-        select: 'section_key,title,source,sort_order,is_visible',
-        order: 'sort_order.asc',
-      }),
-      sb.get('site_settings', { select: 'key,value' }),
-    ]);
-
-    const settingsMap: Record<string, unknown> = {};
-    for (const s of settings as { key: string; value: unknown }[]) {
-      settingsMap[s.key] = s.value;
-    }
-
+    const { config, fromRemote } = await loadSiteConfig();
+    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+    res.setHeader('X-Config-Source', fromRemote ? 'remote' : 'defaults');
     ok(res, {
-      providers: (providers as unknown[]).filter(
-        (p) => (p as { is_enabled: boolean }).is_enabled
-      ),
-      sections: (sections as unknown[]).filter(
-        (s) => (s as { is_visible: boolean }).is_visible
-      ),
-      branding: settingsMap.branding ?? null,
-      announcement: settingsMap.announcement ?? null,
-      maintenance: settingsMap.maintenance ?? null,
-      player: settingsMap.player ?? null,
+      providers: config.providers
+        .filter((p) => p.enabled)
+        .sort((a, b) => a.priority - b.priority)
+        .map((p) => ({ provider_key: p.key, display_name: p.display_name })),
+      sections: config.homepage.sections
+        .filter((s) => s.visible)
+        .map((s) => ({ section_key: s.key, title: s.title, source: s.source })),
+      branding: { site_name: config.site.name, tagline: config.site.tagline },
+      announcement: config.site.announcement,
+      maintenance: config.site.maintenance,
+      player: config.player,
+      schema_version: config.schema_version,
     });
   } catch (e) {
     handleApiError(res, e);
