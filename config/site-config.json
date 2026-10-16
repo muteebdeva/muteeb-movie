@@ -8,7 +8,7 @@
       "text": "I will update new movies soon"
     },
     "maintenance": {
-      "enabled": true,
+      "enabled": false,
       "message": "We'll be back soon."
     }
   },
