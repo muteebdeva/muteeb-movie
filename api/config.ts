@@ -10,7 +10,7 @@ const handler: Handler = async (req, res) => {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
   try {
     const { config, fromRemote } = await loadSiteConfig();
-    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=60');
     res.setHeader('X-Config-Source', fromRemote ? 'remote' : 'defaults');
     ok(res, {
       providers: config.providers
