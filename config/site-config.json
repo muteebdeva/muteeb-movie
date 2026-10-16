@@ -4,7 +4,7 @@
     "name": "Muteeb Movie",
     "tagline": "Discover your next favorite",
     "announcement": {
-      "enabled": false,
+      "enabled": true,
       "text": "Hazim is dick"
     },
     "maintenance": {
