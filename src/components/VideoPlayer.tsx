@@ -7,11 +7,13 @@ interface VideoPlayerProps {
   title: string;
   /** Called with validated PLAYER_EVENT data from the provider's iframe. */
   onPlayerEvent?: (data: PlayerEventData) => void;
+  /** Called when the error panel is shown (user-reported playback problem). */
+  onError?: () => void;
 }
 
 const SPINNER_TIMEOUT_MS = 8000;
 
-export function VideoPlayer({ src, title, onPlayerEvent }: VideoPlayerProps) {
+export function VideoPlayer({ src, title, onPlayerEvent, onError }: VideoPlayerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
@@ -84,7 +86,10 @@ export function VideoPlayer({ src, title, onPlayerEvent }: VideoPlayerProps) {
 
   // Iframe load failures are not detectable cross-origin, so the error
   // panel is also reachable through the "report a problem" action below.
-  const reportProblem = useCallback(() => setError(true), []);
+  const reportProblem = useCallback(() => {
+    setError(true);
+    onError?.();
+  }, [onError]);
 
   if (error) {
     return (

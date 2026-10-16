@@ -22,6 +22,8 @@ import { Spinner, ErrorState } from '@/components/Spinner';
 import { embedUrl, withResumeAt } from '@/lib/vidapi';
 import type { WatchHistoryItem } from '@/lib/useHistory';
 import type { PlayerEventData } from '@/lib/playerEvents';
+import { trackEvent } from '@/lib/tracking';
+import { isProviderEnabled } from '@/lib/siteConfig';
 import {
   getTitle,
   formatDate,
@@ -72,7 +74,19 @@ export function DetailPage({
   const [episodesLoading, setEpisodesLoading] = useState(false);
   const [currentPlayerSrc, setCurrentPlayerSrc] = useState<string>('');
   const [resumeLabel, setResumeLabel] = useState<string | null>(null);
+  /** null = unknown/loading (fail-open), false = provider disabled by admin */
+  const [providerOk, setProviderOk] = useState<boolean | null>(null);
   const lastSaveRef = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    isProviderEnabled('vidapi').then((ok) => {
+      if (!cancelled) setProviderOk(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadDetails = useCallback(async () => {
     setLoading(true);
@@ -102,6 +116,12 @@ export function DetailPage({
   useEffect(() => {
     loadDetails();
   }, [loadDetails]);
+
+  // Analytics: record a title view once details are available.
+  useEffect(() => {
+    if (details) trackEvent('title_open', { tmdb_id: id, media_type: mediaType });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [details?.id]);
 
   useEffect(() => {
     if (mediaType !== 'tv' || !details) return;
@@ -200,6 +220,7 @@ export function DetailPage({
     setResumeLabel(resumeAt > 0 ? formatClock(resumeAt) : null);
     setShowPlayer(true);
     recordWatch(season, episode);
+    trackEvent('play_start', { tmdb_id: id, media_type: mediaType });
     setTimeout(() => {
       document.getElementById('player-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -216,6 +237,7 @@ export function DetailPage({
     setResumeLabel(resumeAt > 0 ? formatClock(resumeAt) : null);
     setShowPlayer(true);
     recordWatch(selectedSeason, ep.episode_number);
+    trackEvent('play_start', { tmdb_id: id, media_type: mediaType });
     setTimeout(() => {
       document.getElementById('player-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -494,7 +516,21 @@ export function DetailPage({
                 </span>
               )}
             </div>
-            <VideoPlayer src={currentPlayerSrc} title={title} onPlayerEvent={handlePlayerEvent} />
+            {providerOk === false ? (
+              <div className="relative w-full aspect-video bg-zinc-900 rounded-xl flex flex-col items-center justify-center gap-3 p-6 text-center">
+                <p className="text-lg font-semibold text-white">Streaming is currently unavailable</p>
+                <p className="text-sm text-zinc-400 max-w-md">
+                  The streaming provider has been disabled by the site administrator. Please check back later.
+                </p>
+              </div>
+            ) : (
+              <VideoPlayer
+                src={currentPlayerSrc}
+                title={title}
+                onPlayerEvent={handlePlayerEvent}
+                onError={() => trackEvent('play_error', { tmdb_id: id, media_type: mediaType, meta: { source: 'user_report' } })}
+              />
+            )}
           </div>
         )}
 

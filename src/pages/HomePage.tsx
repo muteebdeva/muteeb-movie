@@ -9,6 +9,7 @@ import {
   getPopularTV,
   getTopRatedTV,
   getGenres,
+  getDetails,
   discoverMedia,
 } from '@/lib/tmdb';
 import { navigate } from '@/lib/router';
@@ -16,6 +17,8 @@ import { Hero } from '@/components/Hero';
 import { MovieRow } from '@/components/MovieRow';
 import { SkeletonRow, SkeletonHero } from '@/components/Skeleton';
 import { ErrorState } from '@/components/Spinner';
+import { getSiteConfig, type SiteConfig } from '@/lib/siteConfig';
+import { trackEvent } from '@/lib/tracking';
 import type { WatchlistItem } from '@/types';
 import type { WatchHistoryItem } from '@/lib/useHistory';
 
@@ -24,6 +27,30 @@ interface HomePageProps {
   onToggleWatchlist: (item: Omit<WatchlistItem, 'added_at'>, movie: Movie) => void;
   watchHistory: WatchHistoryItem[];
   onRemoveFromHistory: (id: number) => void;
+}
+
+/** Fallback shelf order — identical to the previous hardcoded homepage. */
+const DEFAULT_SECTIONS: { section_key: string; title: string; source: string }[] = [
+  { section_key: 'continue_watching', title: 'Continue Watching', source: 'internal:history' },
+  { section_key: 'trending', title: 'Trending This Week', source: 'tmdb:trending' },
+  { section_key: 'popular_movies', title: 'Popular Movies', source: 'tmdb:popular_movies' },
+  { section_key: 'hidden_gems', title: 'Hidden Gems', source: 'tmdb:hidden_gems' },
+  { section_key: 'popular_tv', title: 'Popular TV Shows', source: 'tmdb:popular_tv' },
+  { section_key: 'indian_cinema', title: 'Indian Cinema', source: 'tmdb:indian_cinema' },
+  { section_key: 'anime', title: 'Anime', source: 'tmdb:anime' },
+  { section_key: 'top_rated_movies', title: 'Top Rated Movies', source: 'tmdb:top_rated_movies' },
+  { section_key: 'top_rated_tv', title: 'Top Rated TV Shows', source: 'tmdb:top_rated_tv' },
+  { section_key: 'upcoming', title: 'Upcoming Movies', source: 'tmdb:upcoming' },
+];
+
+interface CuratedRow {
+  tmdb_id: number;
+  media_type: 'movie' | 'tv';
+  custom_title: string | null;
+  custom_overview: string | null;
+  custom_poster_path: string | null;
+  custom_backdrop_path: string | null;
+  is_featured: boolean;
 }
 
 export function HomePage({
@@ -44,6 +71,8 @@ export function HomePage({
   const [anime, setAnime] = useState<Movie[]>([]);
   const [hiddenGems, setHiddenGems] = useState<Movie[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
+  const [siteConfig, setSiteConfig] = useState<SiteConfig | null>(null);
+  const [curatedRows, setCuratedRows] = useState<Record<string, Movie[]>>({});
   const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleToggle = (movie: Movie) => {
@@ -140,10 +169,58 @@ export function HomePage({
 
   useEffect(() => {
     loadData();
+    trackEvent('page_view');
+    getSiteConfig().then((cfg) => {
+      if (cfg) setSiteConfig(cfg);
+    });
     return () => {
       if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Resolve curated collections (e.g. Staff Picks) into full TMDB titles.
+  useEffect(() => {
+    const sections = siteConfig?.sections ?? DEFAULT_SECTIONS;
+    const keys = sections
+      .filter((s) => s.source.startsWith('collection:'))
+      .map((s) => s.source.slice('collection:'.length));
+    if (keys.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const out: Record<string, Movie[]> = {};
+      for (const key of keys) {
+        try {
+          const res = await fetch(`/api/curated?collection=${encodeURIComponent(key)}`);
+          const data = res.ok ? await res.json() : null;
+          const rows: CuratedRow[] = data && data.ok ? data.data : [];
+          const movies: Movie[] = [];
+          for (const row of rows.slice(0, 20)) {
+            try {
+              const d = await getDetails(row.media_type, row.tmdb_id);
+              movies.push({
+                ...(d as unknown as Movie),
+                title: row.custom_title || (d as unknown as Movie).title,
+                overview: row.custom_overview || (d as unknown as Movie).overview,
+                poster_path: row.custom_poster_path || (d as unknown as Movie).poster_path,
+                backdrop_path: row.custom_backdrop_path || (d as unknown as Movie).backdrop_path,
+                media_type: row.media_type,
+              });
+            } catch {
+              /* skip titles TMDB can't resolve */
+            }
+          }
+          out[`collection:${key}`] = movies;
+        } catch {
+          out[`collection:${key}`] = [];
+        }
+      }
+      if (!cancelled) setCuratedRows(out);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [siteConfig]);
 
   const surpriseMe = () => {
     const pool = [...trending, ...popularMovies, ...topRated].filter((m) => m.id);
@@ -245,72 +322,59 @@ export function HomePage({
       </div>
 
       <div className="relative z-10 space-y-1 pb-12">
-        {historyMovies.length > 0 && (
-          <MovieRow
-            title="Continue Watching"
-            movies={historyMovies}
-            inWatchlist={inWatchlist}
-            onToggleWatchlist={handleToggle}
-            onRemove={(m) => onRemoveFromHistory(m.id)}
-            removeLabel="Remove from history"
-            progressFor={(m) => historyProgress.get(m.id)}
-          />
-        )}
-
-        <MovieRow
-          title="Trending This Week"
-          movies={trending}
-          inWatchlist={inWatchlist}
-          onToggleWatchlist={handleToggle}
-        />
-        <MovieRow
-          title="Popular Movies"
-          movies={popularMovies}
-          inWatchlist={inWatchlist}
-          onToggleWatchlist={handleToggle}
-        />
-        <MovieRow
-          title="Hidden Gems"
-          movies={hiddenGems}
-          inWatchlist={inWatchlist}
-          onToggleWatchlist={handleToggle}
-        />
-        <MovieRow
-          title="Popular TV Shows"
-          movies={popularTV}
-          inWatchlist={inWatchlist}
-          onToggleWatchlist={handleToggle}
-        />
-        <MovieRow
-          title="Indian Cinema"
-          movies={indianCinema}
-          inWatchlist={inWatchlist}
-          onToggleWatchlist={handleToggle}
-        />
-        <MovieRow
-          title="Anime"
-          movies={anime}
-          inWatchlist={inWatchlist}
-          onToggleWatchlist={handleToggle}
-        />
-        <MovieRow
-          title="Top Rated Movies"
-          movies={topRated}
-          inWatchlist={inWatchlist}
-          onToggleWatchlist={handleToggle}
-        />
-        <MovieRow
-          title="Top Rated TV Shows"
-          movies={topRatedTV}
-          inWatchlist={inWatchlist}
-          onToggleWatchlist={handleToggle}
-        />
-        <MovieRow
-          title="Upcoming Movies"
-          movies={upcoming}
-          inWatchlist={inWatchlist}
-          onToggleWatchlist={handleToggle}
-        />
+        {(siteConfig?.sections ?? DEFAULT_SECTIONS).map((section) => {
+          // Continue Watching keeps its special history props.
+          if (section.source === 'internal:history') {
+            return historyMovies.length > 0 ? (
+              <MovieRow
+                key={section.section_key}
+                title={section.title}
+                movies={historyMovies}
+                inWatchlist={inWatchlist}
+                onToggleWatchlist={handleToggle}
+                onRemove={(m) => onRemoveFromHistory(m.id)}
+                removeLabel="Remove from history"
+                progressFor={(m) => historyProgress.get(m.id)}
+              />
+            ) : null;
+          }
+          // Curated collections resolved from the admin panel.
+          if (section.source.startsWith('collection:')) {
+            const movies = curatedRows[section.source] ?? [];
+            return movies.length > 0 ? (
+              <MovieRow
+                key={section.section_key}
+                title={section.title}
+                movies={movies}
+                inWatchlist={inWatchlist}
+                onToggleWatchlist={handleToggle}
+              />
+            ) : null;
+          }
+          // TMDB-driven feeds (the site's long-standing behaviour).
+          const tmdbSources: Record<string, Movie[]> = {
+            'tmdb:trending': trending,
+            'tmdb:popular_movies': popularMovies,
+            'tmdb:hidden_gems': hiddenGems,
+            'tmdb:popular_tv': popularTV,
+            'tmdb:indian_cinema': indianCinema,
+            'tmdb:anime': anime,
+            'tmdb:top_rated_movies': topRated,
+            'tmdb:top_rated_tv': topRatedTV,
+            'tmdb:upcoming': upcoming,
+          };
+          const movies = tmdbSources[section.source];
+          if (!movies) return null;
+          return (
+            <MovieRow
+              key={section.section_key}
+              title={section.title}
+              movies={movies}
+              inWatchlist={inWatchlist}
+              onToggleWatchlist={handleToggle}
+            />
+          );
+        })}
       </div>
     </div>
   );

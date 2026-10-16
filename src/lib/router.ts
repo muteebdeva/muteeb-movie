@@ -39,7 +39,7 @@ export function navigate(path: string) {
 }
 
 export function matchRoute(route: Route): {
-  page: 'home' | 'movie' | 'tv' | 'search' | 'watchlist' | 'browse';
+  page: 'home' | 'movie' | 'tv' | 'search' | 'watchlist' | 'browse' | 'admin';
   id?: number;
   query?: string;
 } {
@@ -50,5 +50,6 @@ export function matchRoute(route: Route): {
   if (parts[0] === 'search') return { page: 'search', query: route.query.q || '' };
   if (parts[0] === 'watchlist') return { page: 'watchlist' };
   if (parts[0] === 'browse') return { page: 'browse' };
+  if (parts[0] === 'admin') return { page: 'admin' };
   return { page: 'home' };
 }
