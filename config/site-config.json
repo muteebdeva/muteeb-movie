@@ -4,8 +4,8 @@
     "name": "Muteeb Movie",
     "tagline": "Discover your next favorite",
     "announcement": {
-      "enabled": false,
-      "text": ""
+      "enabled": true,
+      "text": "I will update new movies soon"
     },
     "maintenance": {
       "enabled": false,
