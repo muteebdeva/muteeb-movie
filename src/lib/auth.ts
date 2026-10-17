@@ -1,7 +1,10 @@
-// Auth client for the movie site. All calls go through same-origin
-// /api/auth/* proxy routes (first-party cookies). The browser never talks
-// to the auth backend directly and never sees tokens.
+// Auth client for the movie site, backed by Supabase Auth.
+// Sessions are managed by @supabase/supabase-js (auto-refresh); the profile
+// (display name, role) comes from public.profiles via RLS (own row only).
+
 import { useCallback, useEffect, useState } from 'react';
+import { supabase, activeSupabase, isSupabaseConfigured } from './supabase';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 export interface AuthUser {
   id: string;
@@ -22,44 +25,140 @@ export class AuthApiError extends Error {
   }
 }
 
-async function req(path: string, init: RequestInit = {}): Promise<unknown> {
-  const res = await fetch(`/api/auth${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    ...init,
-  });
-  const data = (await res.json().catch(() => null)) as {
-    ok?: boolean; data?: unknown; code?: string; message?: string;
-  } | null;
-  if (!res.ok || !data || data.ok !== true) {
-    throw new AuthApiError(
-      res.status,
-      data?.code ?? 'unknown',
-      data?.message ?? `Request failed (${res.status})`
-    );
+function supaError(e: unknown, fallbackCode = 'unknown'): never {
+  const msg = e instanceof Error ? e.message : String(e);
+  const m = msg.toLowerCase();
+  let code = fallbackCode;
+  if (m.includes('invalid login credentials')) code = 'invalid_credentials';
+  else if (m.includes('email not confirmed')) code = 'email_not_verified';
+  else if (m.includes('user already registered')) code = 'email_in_use';
+  else if (m.includes('password')) code = 'weak_password';
+  else if (m.includes('rate limit') || m.includes('too many')) code = 'rate_limited';
+  throw new AuthApiError(400, code, msg);
+}
+
+async function toAuthUser(client: SupabaseClient, user: User): Promise<AuthUser> {
+  let displayName = '';
+  let role = 'user';
+  try {
+    const { data } = await client
+      .from('profiles')
+      .select('display_name,is_admin')
+      .eq('id', user.id)
+      .single();
+    if (data) {
+      displayName = (data.display_name as string) ?? '';
+      role = (data.is_admin as boolean) ? 'admin' : 'user';
+    }
+  } catch {
+    // profile row may not exist yet if the trigger hasn't run; fall back
   }
-  return data.data;
+  if (!displayName) {
+    displayName =
+      (user.user_metadata?.display_name as string | undefined) ||
+      user.email?.split('@')[0] ||
+      'Movie fan';
+  }
+  return {
+    id: user.id,
+    email: user.email ?? '',
+    displayName,
+    emailVerified: Boolean(user.email_confirmed_at),
+    role,
+  };
+}
+
+function ensureConfigured(): void {
+  if (!isSupabaseConfigured()) {
+    throw new AuthApiError(503, 'auth_not_configured', 'Sign-in is not configured yet.');
+  }
 }
 
 export const authApi = {
-  me: () => req('/me') as Promise<{ user: AuthUser }>,
-  signin: (email: string, password: string, remember: boolean) =>
-    req('/signin', { method: 'POST', body: JSON.stringify({ email, password, remember }) }) as Promise<{
-      user: AuthUser; session: { token: string; expiresAt: string };
-    }>,
-  signup: (displayName: string, email: string, password: string, terms: boolean) =>
-    req('/signup', { method: 'POST', body: JSON.stringify({ displayName, email, password, terms }) }) as Promise<{
-      user: AuthUser; session: { token: string; expiresAt: string }; verificationSent: boolean;
-    }>,
-  signout: () => req('/signout', { method: 'POST' }) as Promise<{ signedOut: boolean }>,
-  verifyEmail: (token: string) =>
-    req('/verify-email', { method: 'POST', body: JSON.stringify({ token }) }) as Promise<{ user: AuthUser }>,
-  requestReset: (email: string) =>
-    req('/request-password-reset', { method: 'POST', body: JSON.stringify({ email }) }) as Promise<{
-      ok: boolean; emailConfigured: boolean; message: string;
-    }>,
-  resetPassword: (token: string, password: string) =>
-    req('/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }) as Promise<{ ok: boolean }>,
+  me: async (): Promise<{ user: AuthUser }> => {
+    ensureConfigured();
+    const client = await activeSupabase();
+    if (!client) throw new AuthApiError(401, 'not_signed_in', 'Not signed in.');
+    const { data, error } = await client.auth.getUser();
+    if (error || !data.user) throw new AuthApiError(401, 'not_signed_in', 'Not signed in.');
+    return { user: await toAuthUser(client, data.user) };
+  },
+
+  signin: async (
+    email: string,
+    password: string,
+    remember: boolean,
+  ): Promise<{ user: AuthUser }> => {
+    ensureConfigured();
+    const client = supabase(remember);
+    // Make sure a stale session in the other storage doesn't linger.
+    await supabase(!remember).auth.signOut().catch(() => {});
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    if (error || !data.user) supaError(error ?? new Error('Sign-in failed.'));
+    return { user: await toAuthUser(client, data.user as User) };
+  },
+
+  signup: async (
+    displayName: string,
+    email: string,
+    password: string,
+  ): Promise<{ user: AuthUser | null; needsConfirmation: boolean }> => {
+    ensureConfigured();
+    const client = supabase(true);
+    const site = window.location.origin;
+    const { data, error } = await client.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { display_name: displayName },
+        emailRedirectTo: `${site}/#/verify-email`,
+      },
+    });
+    if (error || !data.user) supaError(error ?? new Error('Sign-up failed.'));
+    // No session => email confirmation is required before first sign-in.
+    if (!data.session) return { user: null, needsConfirmation: true };
+    return { user: await toAuthUser(client, data.user as User), needsConfirmation: false };
+  },
+
+  signout: async (): Promise<{ signedOut: boolean }> => {
+    ensureConfigured();
+    await supabase(true).auth.signOut().catch(() => {});
+    await supabase(false).auth.signOut().catch(() => {});
+    return { signedOut: true };
+  },
+
+  resendVerification: async (email: string): Promise<void> => {
+    ensureConfigured();
+    const { error } = await supabase(true).auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/#/verify-email` },
+    });
+    if (error) supaError(error);
+  },
+
+  requestReset: async (email: string): Promise<{ message: string }> => {
+    ensureConfigured();
+    const { error } = await supabase(true).auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/#/reset-password`,
+    });
+    if (error) supaError(error);
+    // Always respond generically so we don't reveal which emails are registered.
+    return { message: 'If an account exists for that email, a reset link is on its way.' };
+  },
+
+  /** Sets the new password using the recovery session from the reset link. */
+  resetPassword: async (password: string): Promise<void> => {
+    ensureConfigured();
+    // The persistent client consumed the recovery tokens from the URL on load.
+    const client = supabase(true);
+    const { data } = await client.auth.getSession();
+    if (!data.session) {
+      throw new AuthApiError(400, 'invalid_token', 'This reset link is invalid or has expired.');
+    }
+    const { error } = await client.auth.updateUser({ password });
+    if (error) supaError(error);
+  },
 };
 
 /** Friendly messages for auth error codes. */
@@ -68,17 +167,16 @@ export function authErrorMessage(e: unknown): string {
     switch (e.code) {
       case 'invalid_credentials': return 'Incorrect email or password.';
       case 'email_in_use': return 'An account with this email already exists. Try signing in.';
-      case 'email_not_verified': return 'Please verify your email address before signing in.';
-      case 'account_suspended': return 'This account has been suspended.';
+      case 'email_not_verified': return 'Please verify your email address before signing in. Check your inbox for the confirmation link.';
       case 'invalid_token': return 'This link is invalid or has expired.';
       case 'weak_password': return e.message;
-      case 'invalid_email': return 'Enter a valid email address.';
       case 'rate_limited': return 'Too many attempts. Please wait a moment and try again.';
       case 'auth_not_configured': return 'Sign-in is not configured yet. Please try again later.';
-      case 'auth_unreachable': return 'Could not reach the sign-in service. Check your connection.';
+      case 'not_signed_in': return 'You are not signed in.';
       default: return e.message || 'Something went wrong. Please try again.';
     }
   }
+  if (e instanceof Error) return e.message;
   return 'Something went wrong. Please try again.';
 }
 
@@ -103,12 +201,30 @@ async function loadUser(): Promise<void> {
   notify();
 }
 
-/** Global auth state hook — session is verified against the server on mount. */
+let subscribed = false;
+function ensureSubscribed(): void {
+  if (subscribed || !isSupabaseConfigured()) return;
+  subscribed = true;
+  for (const persistent of [true, false]) {
+    supabase(persistent).auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const c = supabase(persistent);
+        void toAuthUser(c, session.user).then((u) => { cachedUser = u; notify(); });
+      } else {
+        // Only clear if neither client has a session.
+        void activeSupabase().then((c) => { if (!c) { cachedUser = null; notify(); } });
+      }
+    });
+  }
+}
+
+/** Global auth state hook — session comes from Supabase (auto-refresh). */
 export function useAuth(): AuthState {
   const [, bump] = useState(0);
   useEffect(() => {
     const l = () => bump((n) => n + 1);
     listeners.add(l);
+    ensureSubscribed();
     if (cachedUser === undefined) void loadUser();
     return () => { listeners.delete(l); };
   }, []);

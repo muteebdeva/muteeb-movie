@@ -29,11 +29,11 @@ export function SignUpPage() {
     setLoading(true);
     setFormError(null);
     try {
-      const { user, verificationSent } = await authApi.signup(name.trim(), email.trim(), password, terms);
-      setSignedInUser(user);
-      if (verificationSent && !user.emailVerified) {
-        setSuccess('Account created! Please check your email to verify your address.');
-      } else {
+      const { user, needsConfirmation } = await authApi.signup(name.trim(), email.trim(), password);
+      if (needsConfirmation) {
+        setSuccess('Account created! Please check your email to verify your address, then sign in.');
+      } else if (user) {
+        setSignedInUser(user);
         navigate('/');
         return;
       }
