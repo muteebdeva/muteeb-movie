@@ -91,7 +91,7 @@
         "key": "staff_picks",
         "title": "Staff Picks",
         "source": "collection:staff_picks",
-        "visible": true
+        "visible": false
       }
     ]
   },
