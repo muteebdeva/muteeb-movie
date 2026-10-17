@@ -13,6 +13,11 @@ import { DetailPage } from '@/pages/DetailPage';
 import { SearchPage } from '@/pages/SearchPage';
 import { BrowsePage } from '@/pages/BrowsePage';
 import { WatchlistPage } from '@/pages/WatchlistPage';
+import { SignInPage } from '@/pages/auth/SignInPage';
+import { SignUpPage } from '@/pages/auth/SignUpPage';
+import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage';
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 
 function App() {
   const route = useHashRoute();
@@ -88,6 +93,25 @@ function App() {
 
   const announcement = siteConfig?.announcement;
   const showAnnouncement = !!announcement?.enabled && !!announcement?.text && !announcementDismissed;
+
+  const isAuthPage =
+    matched.page === 'signin' ||
+    matched.page === 'signup' ||
+    matched.page === 'verify-email' ||
+    matched.page === 'forgot-password' ||
+    matched.page === 'reset-password';
+
+  if (isAuthPage) {
+    return (
+      <div className="min-h-screen bg-zinc-950">
+        {matched.page === 'signin' && <SignInPage />}
+        {matched.page === 'signup' && <SignUpPage />}
+        {matched.page === 'verify-email' && <VerifyEmailPage />}
+        {matched.page === 'forgot-password' && <ForgotPasswordPage />}
+        {matched.page === 'reset-password' && <ResetPasswordPage />}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950">
