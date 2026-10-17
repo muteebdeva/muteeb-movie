@@ -43,12 +43,13 @@ async function toAuthUser(client: SupabaseClient, user: User): Promise<AuthUser>
   try {
     const { data } = await client
       .from('profiles')
-      .select('display_name,is_admin')
+      .select('display_name,role')
       .eq('id', user.id)
       .single();
     if (data) {
       displayName = (data.display_name as string) ?? '';
-      role = (data.is_admin as boolean) ? 'admin' : 'user';
+      const r = data.role as string | undefined;
+      role = r === 'owner' || r === 'admin' || r === 'moderator' || r === 'analyst' ? r : 'user';
     }
   } catch {
     // profile row may not exist yet if the trigger hasn't run; fall back

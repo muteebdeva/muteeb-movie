@@ -3,6 +3,7 @@ import { Search, Bookmark, Menu, X, Compass, User, LogOut } from 'lucide-react';
 import { navigate } from '@/lib/router';
 import { SearchBox } from '@/components/SearchBox';
 import { Logo } from '@/components/Logo';
+import { NotificationBell } from '@/components/NotificationBell';
 import { useSearchHistory } from '@/lib/useHistory';
 import { useAuth } from '@/lib/auth';
 
@@ -114,7 +115,8 @@ export function Navbar({ onSearch, initialQuery = '' }: NavbarProps) {
 
           {!authLoading &&
             (user ? (
-              <div className="relative">
+              <div className="relative flex items-center gap-1">
+                <NotificationBell />
                 <button
                   onClick={() => setUserMenuOpen((v) => !v)}
                   className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium rounded-full pl-1 pr-3 py-1 transition-colors"
