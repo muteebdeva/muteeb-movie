@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Loader2, AlertCircle, Maximize, RotateCcw, ExternalLink } from 'lucide-react';
+import { Loader2, AlertCircle, Maximize, Minimize, RotateCcw, ExternalLink } from 'lucide-react';
 import { parsePlayerEvent, type PlayerEventData, type PlayerQuality } from '@/lib/playerEvents';
 
 interface VideoPlayerProps {
@@ -17,6 +17,7 @@ export function VideoPlayer({ src, title, onPlayerEvent }: VideoPlayerProps) {
   const [retryKey, setRetryKey] = useState(0);
   const [quality, setQuality] = useState<PlayerQuality | null>(null);
   const [availableQualities, setAvailableQualities] = useState<string[]>([]);
+  const [pseudoFs, setPseudoFs] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedRef = useRef(false);
@@ -75,11 +76,39 @@ export function VideoPlayer({ src, title, onPlayerEvent }: VideoPlayerProps) {
     const iframe = iframeRef.current;
     if (!iframe) return;
     const container = iframe.parentElement;
-    if (container?.requestFullscreen) {
-      container.requestFullscreen().catch(() => {});
-    } else if (iframe.requestFullscreen) {
-      iframe.requestFullscreen().catch(() => {});
+    // Native Fullscreen API (desktop + Android). iOS Safari does not support
+    // requestFullscreen on iframes/divs, so fall back to pseudo-fullscreen.
+    const nativeFs =
+      container?.requestFullscreen?.bind(container) ?? iframe.requestFullscreen?.bind(iframe);
+    if (nativeFs) {
+      nativeFs().catch(() => setPseudoFs(true));
+    } else {
+      setPseudoFs(true);
     }
+  }, []);
+
+  const exitFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+    setPseudoFs(false);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement || pseudoFs) {
+      exitFullscreen();
+    } else {
+      enterFullscreen();
+    }
+  }, [pseudoFs, enterFullscreen, exitFullscreen]);
+
+  // If the user exits native fullscreen via the OS gesture, clear pseudo state too.
+  useEffect(() => {
+    const onFsChange = () => {
+      if (!document.fullscreenElement) setPseudoFs(false);
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
   }, []);
 
   // Iframe load failures are not detectable cross-origin, so the error
@@ -125,7 +154,13 @@ export function VideoPlayer({ src, title, onPlayerEvent }: VideoPlayerProps) {
 
   return (
     <div>
-    <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden group">
+    <div
+      className={
+        pseudoFs
+          ? 'fixed inset-0 z-[9999] bg-black group'
+          : 'relative w-full aspect-video bg-black rounded-xl overflow-hidden group'
+      }
+    >
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 z-10 pointer-events-none">
           <div className="flex flex-col items-center gap-3">
@@ -166,11 +201,12 @@ export function VideoPlayer({ src, title, onPlayerEvent }: VideoPlayerProps) {
       )}
 
       <button
-        onClick={enterFullscreen}
+        onClick={toggleFullscreen}
         className="absolute top-3 right-3 z-20 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
-        title="Fullscreen"
+        title={pseudoFs ? 'Exit fullscreen' : 'Fullscreen'}
+        aria-label={pseudoFs ? 'Exit fullscreen' : 'Enter fullscreen'}
       >
-        <Maximize className="w-5 h-5" />
+        {pseudoFs ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
       </button>
     </div>
     <div className="flex justify-between items-center mt-2">
