@@ -8,7 +8,7 @@
       "text": "Hazim is dick"
     },
     "maintenance": {
-      "enabled": false,
+      "enabled": true,
       "message": "We'll be back soon."
     }
   },
