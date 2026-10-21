@@ -4,11 +4,11 @@
     "name": "Muteeb Movie",
     "tagline": "Discover your next favorite",
     "announcement": {
-      "enabled": true,
+      "enabled": false,
       "text": "Hazim is dick"
     },
     "maintenance": {
-      "enabled": true,
+      "enabled": false,
       "message": "We'll be back soon."
     }
   },
