@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "site": {
-    "name": "Muteeb Movie",
+    "name": "Maxflix",
     "tagline": "Discover your next favorite",
     "announcement": {
       "enabled": false,
